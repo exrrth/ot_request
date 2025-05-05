@@ -1,0 +1,1759 @@
+<script>
+  /**
+   * Dashboard page client-side functionality
+   */
+
+  // Global variables
+  let currentUser = null;
+  let otCatalog = [];
+  let allRequests = [];
+  let supervisors = [];
+
+  // Wait for the DOM to be fully loaded
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("Dashboard page loaded");
+
+    // Check if user is logged in
+    checkUserSession();
+
+    // Initialize Bootstrap components
+    initializeBootstrapComponents();
+
+    // Add event listeners
+    addEventListeners();
+  });
+
+  /**
+   * Check if user is logged in by retrieving session data
+   */
+  function checkUserSession() {
+    // Get user data from session storage
+    const userData = sessionStorage.getItem("user");
+    const employeeDashboard = document.getElementById("employeeDashboard");
+    const supervisorDashboard = document.getElementById("supervisorDashboard");
+
+    if (!userData) {
+      // No user data found, redirect to login page
+      console.log("No user session found, redirecting to login");
+      Swal.fire({
+        icon: "warning",
+        title: "Session Expired",
+        text: "Your session has expired. Please log in again.",
+        confirmButtonColor: "#4863A0",
+      }).then(() => {
+        window.top.location.href =
+          window.scriptUrl + "?page=login&message=timeout";
+      });
+      return;
+    }
+
+    // Parse user data
+    currentUser = JSON.parse(userData);
+    console.log("User session found:", currentUser);
+
+    // Show loading overlay while dashboard data is being fetched
+    Swal.fire({
+      title: "Loading Dashboard",
+      text: "Please wait while we prepare your dashboard...",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    // Update UI with user information and then load appropriate dashboard
+    updateUserInfo(currentUser.userId, function () {
+      // After user info is updated, load dashboard data
+      if (currentUser.role === "Supervisor" || currentUser.role === "Manager") {
+        employeeDashboard.style.display = "none";
+        supervisorDashboard.style.display = "block";
+        loadDashboardData("supervisor", true);
+      } else {
+        employeeDashboard.style.display = "block";
+        supervisorDashboard.style.display = "none";
+        loadDashboardData("employee", true);
+      }
+    });
+  }
+
+  /**
+   * Update UI with user information
+   */
+  function updateUserInfo(userId, callback) {
+    // First, fetch the user data based on userId
+    google.script.run
+      .withSuccessHandler(function (userData) {
+        // Store user data in the currentUser variable if it's not already set
+        if (!currentUser) {
+          currentUser = userData;
+        }
+
+        // Update user name and initials in the header
+        document.getElementById("userFullName").textContent = userData.fullName;
+
+        // Get initials from full name
+        const initials = getInitials(userData.fullName);
+        document.getElementById("userInitials").textContent = initials;
+
+        // Update profile information
+        // Employee dashboard
+        document.getElementById("profileName").textContent = userData.fullName;
+        document.getElementById("profileTitle").textContent =
+          userData.title || "Senior Software Developer • IT Department";
+        document.getElementById("profileId").textContent =
+          "Employee ID: " + userData.userId;
+        document.getElementById("profileEmail").textContent =
+          "Email: " + userData.email;
+        document.getElementById("profileStartDate").textContent =
+          userData.startDate || "No data";
+        document.getElementById("profileInitials").textContent = initials;
+
+        // Supervisor dashboard
+        if (userData.role === "Supervisor" || userData.role === "Manager") {
+          document.getElementById("supProfileName").textContent =
+            userData.fullName;
+          document.getElementById("supProfileTitle").textContent =
+            userData.title || "No data";
+          document.getElementById("supProfileId").textContent =
+            "Employee ID: " + userData.userId;
+          document.getElementById("supProfileEmail").textContent =
+            "Email: " + userData.email;
+          document.getElementById("supProfileStartDate").textContent =
+            userData.startDate || "No data";
+          document.getElementById("supProfileInitials").textContent = initials;
+        }
+
+        // Update stats placeholders
+        // You could also fetch these from the server based on userId
+        document.getElementById("hoursRemaining").textContent =
+          userData.hoursRemaining || "No data";
+        document.getElementById("hoursTotal").textContent =
+          "/ " + (userData.hoursTotal || "No data") + " hrs";
+        document.getElementById("hoursThisMonth").textContent =
+          userData.hoursThisMonth || "No data";
+
+        // Update supervisor stats if applicable
+        if (userData.role === "Supervisor" || userData.role === "Manager") {
+          document.getElementById("pendingReviews").textContent =
+            userData.pendingReviews || "No data";
+          // document.getElementById("teamOTHours").textContent =
+          //   userData.teamOTHours || "No data";
+        }
+        console.log("User data updated in UI:", userData);
+
+        // Execute callback if provided
+        if (typeof callback === "function") {
+          callback();
+        }
+      })
+      .withFailureHandler(function (error) {
+        console.error("Error fetching user data:", error);
+        Swal.fire({
+          icon: "error",
+          title: "User Data Error",
+          text: "Failed to load user information. Please refresh the page.",
+          confirmButtonColor: "#4863A0",
+        });
+
+        // Optional: execute callback even in case of error to prevent dashboard from getting stuck
+        if (typeof callback === "function") {
+          callback();
+        }
+      })
+      .getUserData(userId); // Call the server-side function to get user data
+  }
+
+  /**
+   * Get initials from a full name
+   */
+  function getInitials(fullName) {
+    return fullName
+      .split(" ")
+      .map((name) => name.charAt(0))
+      .join("")
+      .toUpperCase();
+  }
+
+  /**
+   * Initialize Bootstrap components
+   */
+  function initializeBootstrapComponents() {
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(
+      document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    );
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Initialize popovers
+    const popoverTriggerList = [].slice.call(
+      document.querySelectorAll('[data-bs-toggle="popover"]')
+    );
+    popoverTriggerList.map(function (popoverTriggerEl) {
+      return new bootstrap.Popover(popoverTriggerEl);
+    });
+  }
+
+  /**
+   * Add event listeners to interactive elements
+   */
+  function addEventListeners() {
+    console.log("Adding event listeners");
+
+    const logoutBtn = document.getElementById("logoutBtn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", handleLogout);
+    } else {
+      console.warn("logoutBtn not found");
+    }
+
+    const newRequestBtn = document.getElementById("newRequestBtn");
+    if (newRequestBtn) {
+      newRequestBtn.addEventListener("click", showNewRequestModal);
+    } else {
+      console.warn("newRequestBtn not found");
+    }
+
+    const submitRequestBtn = document.getElementById("submitRequestBtn");
+    if (submitRequestBtn) {
+      submitRequestBtn.addEventListener("click", submitNewRequest);
+    } else {
+      console.warn("submitRequestBtn not found");
+    }
+
+    const updateRequestBtn = document.getElementById("updateRequestBtn");
+    if (updateRequestBtn) {
+      updateRequestBtn.addEventListener("click", updateRequest);
+    } else {
+      console.warn("updateRequestBtn not found");
+    }
+
+    const otCategory = document.getElementById("otCategory");
+    if (otCategory) {
+      otCategory.addEventListener("change", updateOTNames);
+    } else {
+      console.warn("otCategory not found");
+    }
+
+    const editOtCategory = document.getElementById("editOtCategory");
+    if (editOtCategory) {
+      editOtCategory.addEventListener("change", updateEditOTNames);
+    } else {
+      console.warn("editOtCategory not found");
+    }
+
+    const startTime = document.getElementById("startTime");
+    if (startTime) {
+      startTime.addEventListener("change", calculateTotalHours);
+    } else {
+      console.warn("startTime not found");
+    }
+
+    const endTime = document.getElementById("endTime");
+    if (endTime) {
+      endTime.addEventListener("change", calculateTotalHours);
+    } else {
+      console.warn("endTime not found");
+    }
+
+    const editStartTime = document.getElementById("editStartTime");
+    if (editStartTime) {
+      editStartTime.addEventListener("change", calculateEditTotalHours);
+    } else {
+      console.warn("editStartTime not found");
+    }
+
+    const editEndTime = document.getElementById("editEndTime");
+    if (editEndTime) {
+      editEndTime.addEventListener("change", calculateEditTotalHours);
+    } else {
+      console.warn("editEndTime not found");
+    }
+  }
+
+  /**
+   * Handle logout button click
+   */
+  function handleLogout() {
+    Swal.fire({
+      title: "Logout Confirmation",
+      text: "Are you sure you want to logout?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#4863A0",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, Logout",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Logging Out",
+          text: "You are being logged out...",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        // Call your success function after a small delay
+        setTimeout(() => {
+          onLogoutSuccess();
+        }, 1000);
+      }
+    });
+  }
+
+  function onLogoutSuccess() {
+    // Optional: Clear session/local storage
+    sessionStorage.clear();
+    localStorage.clear();
+
+    // Redirect to login page
+    // window.location.href = "https://script.google.com/macros/s/AKfycbwElllNgvzOXFXNvqN67MATsZIuB28k_HM_mw4_UUAu-DCPDiJV0BzD5H8zc-wGp4Ax/exec";
+    window.top.location.href = window.scriptUrl + "?page=login&message=logout";
+  }
+
+  /**
+   * Handle logout error
+   */
+  function onLogoutError(error) {
+    console.error("Logout error:", error);
+
+    Swal.fire({
+      icon: "error",
+      title: "Logout Error",
+      text: "An error occurred during logout. Please try again.",
+      confirmButtonColor: "#4863A0",
+    });
+  }
+
+  /**
+   * Load employee dashboard data
+   */
+  function loadEmployeeDashboard() {
+    loadOTCatalog();
+    loadSupervisors();
+    loadEmployeeRequests();
+    updateLastUpdatedTime("empLastUpdatedTime");
+  }
+
+  /**
+   * Load supervisor dashboard data
+   */
+  function loadSupervisorDashboard() {
+    loadSupervisorRequests();
+    loadTeamMembers();
+    updateLastUpdatedTime("lastUpdatedTime");
+  }
+
+  /**
+   * Load OT catalog data from server
+   */
+  function loadOTCatalog() {
+    google.script.run
+      .withSuccessHandler(onOTCatalogLoaded)
+      .withFailureHandler(onDataLoadError)
+      .getOTCatalog();
+  }
+
+  /**
+   * Handle loaded OT catalog data
+   */
+  function onOTCatalogLoaded(data) {
+    console.log("OT catalog loaded:", data);
+
+    // Store the catalog data
+    otCatalog = data;
+
+    // Extract unique categories
+    const categories = [...new Set(data.map((item) => item.OT_Category))];
+
+    // Populate the category dropdown in the new request form
+    const categoryDropdown = document.getElementById("otCategory");
+    categoryDropdown.innerHTML = '<option value="">Select OT Category</option>';
+
+    categories.forEach((category) => {
+      const option = document.createElement("option");
+      option.value = category;
+      option.textContent = category;
+      categoryDropdown.appendChild(option);
+    });
+
+    // Also populate the edit form dropdown
+    const editCategoryDropdown = document.getElementById("editOtCategory");
+    editCategoryDropdown.innerHTML =
+      '<option value="">Select OT Category</option>';
+
+    categories.forEach((category) => {
+      const option = document.createElement("option");
+      option.value = category;
+      option.textContent = category;
+      editCategoryDropdown.appendChild(option);
+    });
+  }
+  /**
+   * Load supervisors for the current employee
+   */
+  function loadSupervisors() {
+    google.script.run
+      .withSuccessHandler(onSupervisorsLoaded)
+      .withFailureHandler(onDataLoadError)
+      .getSupervisors(currentUser.userId);
+  }
+
+  /**
+   * Handle loaded supervisors data
+   */
+  function onSupervisorsLoaded(data) {
+    console.log("Supervisors loaded:", data);
+    supervisors = data;
+
+    // Populate supervisor dropdown in new request form
+    const supervisorDropdown = document.getElementById("supervisor");
+    supervisorDropdown.innerHTML =
+      '<option value="">Select Supervisor</option>';
+
+    supervisors.forEach((supervisor) => {
+      const option = document.createElement("option");
+      option.value = supervisor.id;
+      option.textContent = supervisor.name;
+      supervisorDropdown.appendChild(option);
+    });
+  }
+
+  /**
+   * Load employee's OT requests
+   */
+  function loadEmployeeRequests() {
+    google.script.run
+      .withSuccessHandler(onEmployeeRequestsLoaded)
+      .withFailureHandler(onDataLoadError)
+      .getEmployeeRequests(currentUser.userId);
+  }
+
+  /**
+   * Handle loaded employee requests data
+   */
+  function onEmployeeRequestsLoaded(data) {
+    console.log("Employee requests loaded:", data);
+    allRequests = data;
+
+    // Calculate total approved hours
+    const approvedRequests = data.filter((req) => req.Status === "Approved");
+    const totalApprovedHours = approvedRequests.reduce((total, req) => {
+      return total + (parseFloat(req.Requested_Hours) || 0);
+    }, 0);
+
+    // Update the "This Month" display with the calculated hours
+    document.getElementById("hoursThisMonth").textContent =
+      totalApprovedHours.toFixed(2);
+
+    // Update request counts
+    updateRequestCounts();
+
+    // Render requests in the appropriate containers
+    renderRequests();
+  }
+
+  /**
+   * Update request count statistics
+   */
+  function updateRequestCounts() {
+    // Count requests by status
+    const pendingRequests = allRequests.filter(
+      (req) => req.Status === "Pending" || req.Status === "Edited"
+    );
+    const approvedRequests = allRequests.filter(
+      (req) => req.Status === "Approved"
+    );
+    const rejectedRequests = allRequests.filter(
+      (req) => req.Status === "Rejected"
+    );
+
+    // Update count displays
+    document.getElementById("allRequestsCount").textContent =
+      allRequests.length;
+    document.getElementById("pendingRequestsCount").textContent =
+      pendingRequests.length;
+    document.getElementById("approvedRequestsCount").textContent =
+      approvedRequests.length;
+    document.getElementById("rejectedRequestsCount").textContent =
+      rejectedRequests.length;
+  }
+
+  /**
+   * Render OT requests in the appropriate containers
+   */
+  function renderRequests() {
+    // Get container elements
+    const allContainer = document.getElementById("allRequestsContainer");
+    const pendingContainer = document.getElementById(
+      "pendingRequestsContainer"
+    );
+    const approvedContainer = document.getElementById(
+      "approvedRequestsContainer"
+    );
+    const rejectedContainer = document.getElementById(
+      "rejectedRequestsContainer"
+    );
+
+    // Clear containers
+    allContainer.innerHTML = "";
+    pendingContainer.innerHTML = "";
+    approvedContainer.innerHTML = "";
+    rejectedContainer.innerHTML = "";
+
+    // If no requests, show empty message
+    if (allRequests.length === 0) {
+      const emptyMessage = `
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+        <p class="mt-3">No OT requests found</p>
+        <p>Click "New Request" to create your first OT request</p>
+      </div>
+    `;
+      allContainer.innerHTML = emptyMessage;
+      pendingContainer.innerHTML = emptyMessage;
+      approvedContainer.innerHTML = emptyMessage;
+      rejectedContainer.innerHTML = emptyMessage;
+      return;
+    }
+
+    // Group requests by status
+    const pendingRequests = allRequests.filter(
+      (req) => req.Status === "Pending" || req.Status === "Edited"
+    );
+    const approvedRequests = allRequests.filter(
+      (req) => req.Status === "Approved"
+    );
+    const rejectedRequests = allRequests.filter(
+      (req) => req.Status === "Rejected"
+    );
+
+    // Sort requests by date (newest first)
+    const sortByDate = (a, b) =>
+      new Date(b.Request_Timestamp) - new Date(a.Request_Timestamp);
+
+    allRequests.sort(sortByDate);
+    pendingRequests.sort(sortByDate);
+    approvedRequests.sort(sortByDate);
+    rejectedRequests.sort(sortByDate);
+
+    // Render all requests
+    allRequests.forEach((request) => {
+      allContainer.appendChild(createRequestCard(request, "employee"));
+    });
+
+    // Render pending requests
+    pendingRequests.forEach((request) => {
+      pendingContainer.appendChild(createRequestCard(request, "employee"));
+    });
+
+    // Render approved requests
+    approvedRequests.forEach((request) => {
+      approvedContainer.appendChild(createRequestCard(request, "employee"));
+    });
+
+    // Render rejected requests
+    rejectedRequests.forEach((request) => {
+      rejectedContainer.appendChild(createRequestCard(request, "employee"));
+    });
+
+    // If no requests for a specific status, show empty message
+    if (pendingRequests.length === 0) {
+      pendingContainer.innerHTML = `
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+        <p class="mt-3">No pending requests</p>
+      </div>
+    `;
+    }
+
+    if (approvedRequests.length === 0) {
+      approvedContainer.innerHTML = `
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+        <p class="mt-3">No approved requests</p>
+      </div>
+    `;
+    }
+
+    if (rejectedRequests.length === 0) {
+      rejectedContainer.innerHTML = `
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+        <p class="mt-3">No rejected requests</p>
+      </div>
+    `;
+    }
+  }
+
+  /**
+   * Create a request card element
+   */
+  function createRequestCard(request, viewType) {
+    const cardDiv = document.createElement("div");
+    cardDiv.className = `request-card ${request.Status.toLowerCase()}`;
+
+    // Format date
+    const requestDate = new Date(request.Request_Timestamp);
+    const formattedDate = requestDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    // Format status class
+    let statusClass = "pending";
+    if (request.Status === "Approved") statusClass = "approved";
+    if (request.Status === "Rejected") statusClass = "rejected";
+    if (request.Status === "Edited") statusClass = "edited";
+
+    // Create card content
+    cardDiv.innerHTML = `
+    <h3>${request.OT_Name}</h3>
+    <div class="request-card-meta">
+      <span><i class="bi bi-calendar"></i> ${formattedDate}</span>
+      <span><i class="bi bi-clock"></i> ${request.Requested_Hours} hours</span>
+      <span><i class="bi bi-building"></i> ${request.Category}</span>
+    </div>
+    <div class="request-card-reason">
+      ${request.Remarks || "No remarks provided"}
+    </div>
+    <div class="d-flex justify-content-between align-items-center">
+      <span class="request-status ${statusClass}">${request.Status}</span>
+      <div class="request-actions">
+        ${
+          viewType === "employee" &&
+          (request.Status === "Pending" || request.Status === "Edited")
+            ? `<button class="btn btn-sm btn-outline-primary edit-request-btn" data-request-id="${request.Request_ID}">
+                <i class="bi bi-pencil"></i> Edit
+              </button>`
+            : ""
+        }
+        ${
+          viewType === "supervisor" &&
+          (request.Status === "Pending" || request.Status === "Edited")
+            ? `<button class="btn btn-sm btn-success approve-btn" data-request-id="${request.Request_ID}">
+                <i class="bi bi-check-lg"></i> Approve
+              </button>
+              <button class="btn btn-sm btn-danger reject-btn" data-request-id="${request.Request_ID}">
+                <i class="bi bi-x-lg"></i> Reject
+              </button>`
+            : ""
+        }
+        <button class="btn btn-sm btn-outline-secondary details-btn" data-request-id="${
+          request.Request_ID
+        }">
+          <i class="bi bi-info-circle"></i> Details
+        </button>
+      </div>
+    </div>
+  `;
+
+    console.log("Request card:", request.Request_ID);
+    // Add event listeners to buttons
+    cardDiv.querySelectorAll(".edit-request-btn").forEach((btn) => {
+      btn.addEventListener("click", function () {
+        const requestId = this.getAttribute("data-request-id");
+        showEditRequestModal(requestId);
+      });
+    });
+
+    cardDiv.querySelectorAll(".details-btn").forEach((btn) => {
+      btn.addEventListener("click", function () {
+        const requestId = this.getAttribute("data-request-id");
+        showRequestDetails(requestId);
+      });
+    });
+
+    if (viewType === "supervisor") {
+      cardDiv.querySelectorAll(".approve-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const requestId = this.getAttribute("data-request-id");
+          approveRequest(requestId);
+        });
+      });
+
+      cardDiv.querySelectorAll(".reject-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const requestId = this.getAttribute("data-request-id");
+          rejectRequest(requestId);
+        });
+      });
+    }
+
+    return cardDiv;
+  }
+
+  /**
+   * Load supervisor's OT requests
+   */
+  function loadSupervisorRequests() {
+    console.log("Loading supervisor requests of", currentUser.userId);
+    // console.log("Loading supervisor requests of", supervisorId);
+    google.script.run
+      .withSuccessHandler(onSupervisorRequestsLoaded)
+      .withFailureHandler(onDataLoadError)
+      .getSupervisorRequests(currentUser.userId);
+  }
+
+  /**
+   * Handle loaded supervisor requests data
+   */
+  function onSupervisorRequestsLoaded(data) {
+    console.log("Supervisor requests loaded:", data);
+
+    allRequests = data || [];
+
+    // Check if data is null or undefined or empty array
+    if (!data || data.length === 0) {
+      console.warn("No supervisor requests data received or empty array");
+
+      // Set counts to zero
+      document.getElementById("supPendingCount").textContent = "0";
+      document.getElementById("supApprovedCount").textContent = "0";
+      document.getElementById("supRejectedCount").textContent = "0";
+      document.getElementById("pendingReviews").textContent = "0";
+
+      // Show empty messages in containers
+      const pendingContainer = document.getElementById("supPendingContainer");
+      pendingContainer.innerHTML = `
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+        <p class="mt-3">No pending requests to review</p>
+      </div>
+    `;
+
+      const historyContainer = document.getElementById("supHistoryContainer");
+      historyContainer.innerHTML = `
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+        <p class="mt-3">No approval history available</p>
+      </div>
+    `;
+
+      return;
+    }
+
+    // Filter requests by status using native JavaScript array methods
+    const pendingRequests = allRequests.filter(function (req) {
+      return req.Status === "Pending" || req.Status === "Edited";
+    });
+
+    const approvedRequests = allRequests.filter(function (req) {
+      return req.Status === "Approved";
+    });
+
+    const rejectedRequests = allRequests.filter(function (req) {
+      return req.Status === "Rejected";
+    });
+
+    // Update request counts
+    document.getElementById("supPendingCount").textContent =
+      pendingRequests.length;
+    document.getElementById("supApprovedCount").textContent =
+      approvedRequests.length;
+    document.getElementById("supRejectedCount").textContent =
+      rejectedRequests.length;
+    document.getElementById("pendingReviews").textContent =
+      pendingRequests.length;
+
+    // Render pending requests
+    const pendingContainer = document.getElementById("supPendingContainer");
+    pendingContainer.innerHTML = "";
+
+    if (pendingRequests.length === 0) {
+      pendingContainer.innerHTML = `
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+        <p class="mt-3">No pending requests to review</p>
+      </div>
+    `;
+    } else {
+      pendingRequests.forEach(function (request) {
+        pendingContainer.appendChild(createRequestCard(request, "supervisor"));
+      });
+    }
+
+    // Render approval history
+    const historyContainer = document.getElementById("supHistoryContainer");
+    historyContainer.innerHTML = "";
+
+    const history = [].concat(approvedRequests, rejectedRequests);
+
+    if (history.length === 0) {
+      historyContainer.innerHTML = `
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+        <p class="mt-3">No approval history available</p>
+      </div>
+    `;
+    } else {
+      // Sort by date (newest first)
+      history.sort(function (a, b) {
+        const timestampA =
+          a.Status === "Approved"
+            ? new Date(a.Approved_Timestamp)
+            : new Date(a.Rejected_Timestamp);
+        const timestampB =
+          b.Status === "Approved"
+            ? new Date(b.Approved_Timestamp)
+            : new Date(b.Rejected_Timestamp);
+        return timestampB - timestampA; // Descending order (newest first)
+      });
+
+      history.forEach(function (request) {
+        historyContainer.appendChild(createRequestCard(request, "supervisor"));
+      });
+    }
+  }
+
+  /**
+   * Load team members for the supervisor
+   */
+  /**
+   * Load team members for the supervisor
+   */
+  function loadTeamMembers() {
+    // console.log("Loading team members for supervisor:", supervisorId);
+
+    // Call server-side function to get team members
+    google.script.run
+      .withSuccessHandler(onTeamMembersLoaded)
+      .withFailureHandler(onDataLoadError)
+      .getTeamMembers(currentUser.userId);
+  }
+
+  /**
+   * Handle loaded team members data
+   */
+  function onTeamMembersLoaded(data) {
+    console.log("Team members loaded:", data);
+
+    if (!data || data.length === 0) {
+      console.warn("No team members found for this supervisor");
+
+      // Update team members count
+      document.getElementById("teamMembersCount").textContent = "0";
+      document.getElementById("teamOTHours").textContent = "0";
+
+      // Show empty state in team activity table
+      const teamActivityTable = document.getElementById("teamActivityTable");
+      teamActivityTable.innerHTML = `
+      <tr>
+        <td colspan="5" class="text-center py-3 text-muted">
+          <i class="bi bi-people"></i> No team members found
+        </td>
+      </tr>
+    `;
+
+      return;
+    }
+
+    // Store team members data
+    const teamMembers = data;
+
+    // Calculate total OT hours across all team members
+    let totalTeamOTHours = 0;
+    teamMembers.forEach((member) => {
+      // Add the total hours (or 0 if it's undefined/null)
+      totalTeamOTHours += parseFloat(member.totalHours || 0);
+    });
+
+    // Update team members count and team OT hours
+    document.getElementById("teamMembersCount").textContent =
+      teamMembers.length;
+    document.getElementById("teamOTHours").textContent =
+      totalTeamOTHours.toFixed(2);
+
+    // Populate team member filter dropdown
+    const teamMemberFilter = document.getElementById("supTeamMemberFilter");
+    teamMemberFilter.innerHTML = '<option value="">Team Member</option>';
+
+    teamMembers.forEach((member) => {
+      const option = document.createElement("option");
+      option.value = member.id;
+      option.textContent = member.name;
+      teamMemberFilter.appendChild(option);
+    });
+
+    // Populate team activity table
+    const teamActivityTable = document.getElementById("teamActivityTable");
+    teamActivityTable.innerHTML = "";
+
+    teamMembers.forEach((member) => {
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+      <td>${member.name}</td>
+      <td>${parseFloat(member.totalHours || 0).toFixed(2)}</td>
+      <td>${member.pending || 0}</td>
+      <td>${member.approved || 0}</td>
+      <td>${member.rejected || 0}</td>
+    `;
+
+      teamActivityTable.appendChild(row);
+    });
+  }
+
+  /**
+   * Handle data load errors
+   */
+  function onDataLoadError(error) {
+    console.error("Data load error:", error);
+
+    Swal.fire({
+      icon: "error",
+      title: "Data Load Error",
+      text: "An error occurred while loading data. Please try refreshing the page.",
+      confirmButtonColor: "#4863A0",
+    });
+  }
+
+  /**
+   * Show the new request modal
+   */
+  function showNewRequestModal() {
+    // Reset form
+    document.getElementById("newRequestForm").reset();
+    document.getElementById("otName").disabled = true;
+
+    // Reset the total hours display and input
+    document.getElementById("totalHoursDisplay").textContent = "0";
+    document.getElementById("totalHoursInput").value = "";
+
+    // Show modal
+    const modal = new bootstrap.Modal(
+      document.getElementById("newRequestModal")
+    );
+    modal.show();
+  }
+
+  /**
+   * Update OT name options based on selected category
+   */
+  function updateOTNames() {
+    const category = document.getElementById("otCategory").value;
+    const otNameSelect = document.getElementById("otName");
+
+    // Reset and disable if no category selected
+    if (!category) {
+      otNameSelect.innerHTML = '<option value="">Select OT Type</option>';
+      otNameSelect.disabled = true;
+      return;
+    }
+
+    // Filter OT catalog by selected category
+    const filteredOT = _.filter(otCatalog, { OT_Category: category });
+
+    // Update OT name dropdown
+    otNameSelect.innerHTML = '<option value="">Select OT Type</option>';
+
+    filteredOT.forEach((ot) => {
+      const option = document.createElement("option");
+      option.value = ot.OT_ID;
+      option.textContent = ot.OT_Name;
+      otNameSelect.appendChild(option);
+    });
+
+    // Enable select
+    otNameSelect.disabled = false;
+  }
+
+  /**
+   * Update OT name options for edit form
+   */
+  function updateEditOTNames() {
+    const category = document.getElementById("editOtCategory").value;
+    const otNameSelect = document.getElementById("editOtName");
+
+    // Reset and disable if no category selected
+    if (!category) {
+      otNameSelect.innerHTML = '<option value="">Select OT Type</option>';
+      otNameSelect.disabled = true;
+      return;
+    }
+
+    // Filter OT catalog by selected category
+    const filteredOT = _.filter(otCatalog, { OT_Category: category });
+
+    // Update OT name dropdown
+    otNameSelect.innerHTML = '<option value="">Select OT Type</option>';
+
+    filteredOT.forEach((ot) => {
+      const option = document.createElement("option");
+      option.value = ot.OT_ID;
+      option.textContent = ot.OT_Name;
+      otNameSelect.appendChild(option);
+    });
+
+    // Enable select
+    otNameSelect.disabled = false;
+  }
+
+  /**
+   * Calculate total hours based on start and end time
+   */
+  function calculateTotalHours() {
+    const startTime = document.getElementById("startTime").value;
+    const endTime = document.getElementById("endTime").value;
+
+    if (startTime && endTime) {
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+
+      // Validate times
+      if (end <= start) {
+        document.getElementById("totalHoursDisplay").textContent =
+          "Invalid time range";
+        document.getElementById("totalHoursInput").value = "";
+        return;
+      }
+
+      // Calculate difference in hours
+      const diffHours = (end - start) / (1000 * 60 * 60);
+      const formattedHours = diffHours.toFixed(2) + " hours";
+
+      // Update both the display span and hidden input
+      document.getElementById("totalHoursDisplay").textContent = formattedHours;
+      document.getElementById("totalHoursInput").value = diffHours.toFixed(2);
+    }
+  }
+
+  /**
+   * Calculate total hours for edit form
+   */
+  function calculateEditTotalHours() {
+    const startTime = document.getElementById("editStartTime").value;
+    const endTime = document.getElementById("editEndTime").value;
+
+    if (startTime && endTime) {
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+
+      // Validate times
+      if (end <= start) {
+        document.getElementById("editTotalHoursDisplay").textContent =
+          "Invalid time range";
+        document.getElementById("editTotalHoursInput").value = "";
+        return;
+      }
+
+      // Calculate difference in hours
+      const diffHours = (end - start) / (1000 * 60 * 60);
+      const formattedHours = diffHours.toFixed(2) + " hours";
+
+      // Update both the display span and hidden input
+      document.getElementById("editTotalHoursDisplay").textContent =
+        formattedHours;
+      document.getElementById("editTotalHoursInput").value =
+        diffHours.toFixed(2);
+    }
+  }
+
+  /**
+   * Submit a new OT request
+   */
+  function submitNewRequest() {
+    // Validate form
+    const form = document.getElementById("newRequestForm");
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    // Get form values
+    const otCategory = document.getElementById("otCategory").value;
+    const otId = document.getElementById("otName").value;
+    const startTime = document.getElementById("startTime").value;
+    const endTime = document.getElementById("endTime").value;
+    const totalHours = document.getElementById("totalHoursInput").value; // Use hidden input value
+    const supervisorId = document.getElementById("supervisor").value;
+    const remarks = document.getElementById("remarks").value;
+
+    // Set loading state
+    const submitBtn = document.getElementById("submitRequestBtn");
+    const submitBtnText = document.getElementById("submitBtnText");
+    const submitBtnLoader = document.getElementById("submitBtnLoader");
+
+    submitBtn.disabled = true;
+    submitBtnText.classList.add("d-none");
+    submitBtnLoader.classList.remove("d-none");
+
+    // Create request data
+    const requestData = {
+      employeeId: currentUser.userId,
+      employeeName: currentUser.fullName,
+      otId: otId,
+      startTime: startTime,
+      endTime: endTime,
+      totalHours: totalHours, // Add totalHours to request data
+      supervisorId: supervisorId,
+      remarks: remarks,
+    };
+
+    // Show confirmation dialog
+    Swal.fire({
+      title: "Confirm OT Request",
+      text: "Are you sure you want to submit this OT request?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#4863A0",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, Submit",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Submit the request
+        google.script.run
+          .withSuccessHandler(onRequestSubmitted)
+          .withFailureHandler(onRequestError)
+          .createOTRequest(requestData);
+      } else {
+        // Reset loading state
+        submitBtn.disabled = false;
+        submitBtnText.classList.remove("d-none");
+        submitBtnLoader.classList.add("d-none");
+      }
+    });
+  }
+
+  /**
+   * Handle successful request submission
+   */
+  function onRequestSubmitted(response) {
+    console.log("Request submitted:", response);
+
+    // Reset loading state
+    const submitBtn = document.getElementById("submitRequestBtn");
+    const submitBtnText = document.getElementById("submitBtnText");
+    const submitBtnLoader = document.getElementById("submitBtnLoader");
+
+    submitBtn.disabled = false;
+    submitBtnText.classList.remove("d-none");
+    submitBtnLoader.classList.add("d-none");
+
+    if (response.success) {
+      // Hide modal
+      bootstrap.Modal.getInstance(
+        document.getElementById("newRequestModal")
+      ).hide();
+
+      // Show success message
+      Swal.fire({
+        icon: "success",
+        title: "Request Submitted",
+        text: "Your OT request has been submitted successfully.",
+        confirmButtonColor: "#4863A0",
+      }).then(() => {
+        // Reload employee requests
+        loadEmployeeRequests();
+      });
+    } else {
+      // Show error message
+      Swal.fire({
+        icon: "error",
+        title: "Submission Error",
+        text:
+          response.message ||
+          "An error occurred while submitting your request.",
+        confirmButtonColor: "#4863A0",
+      });
+    }
+  }
+
+  /**
+   * Handle request submission error
+   */
+  function onRequestError(error) {
+    console.error("Request error:", error);
+
+    // Reset loading state
+    const submitBtn = document.getElementById("submitRequestBtn");
+    const submitBtnText = document.getElementById("submitBtnText");
+    const submitBtnLoader = document.getElementById("submitBtnLoader");
+
+    submitBtn.disabled = false;
+    submitBtnText.classList.remove("d-none");
+    submitBtnLoader.classList.add("d-none");
+
+    // Show error message
+    Swal.fire({
+      icon: "error",
+      title: "System Error",
+      text: "An error occurred while processing your edit. Please try again later.",
+      confirmButtonColor: "#4863A0",
+    });
+  }
+
+  /**
+   * Show request details in a modal
+   */
+  function showRequestDetails(requestId) {
+    // Find the request by ID
+    const request = allRequests.find((req) => req.Request_ID === requestId);
+
+    if (!request) {
+      console.error("Request not found:", requestId);
+      return;
+    }
+
+    // Format dates
+    const formatDate = (dateStr) => {
+      const date = new Date(dateStr);
+      return date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    };
+
+    const requestDate = formatDate(request.Request_Timestamp);
+    const startDate = formatDate(request.Start_Time);
+    const endDate = formatDate(request.End_Time);
+
+    // Create details HTML
+    let detailsHtml = `
+    <div class="request-details">
+      <h6 class="mb-3">Request ID: ${request.Request_ID}</h6>
+      
+      <div class="mb-3">
+        <strong>OT Category:</strong> ${request.Category}<br>
+        <strong>OT Name:</strong> ${request.OT_Name}<br>
+        <strong>Requested Hours:</strong> ${request.Requested_Hours.toFixed(
+          2
+        )} hours
+      </div>
+      
+      <div class="mb-3">
+        <strong>Start Time:</strong> ${startDate}<br>
+        <strong>End Time:</strong> ${endDate}
+      </div>
+      
+      <div class="mb-3">
+        <strong>Supervisor:</strong> ${request.Supervisor_Name}<br>
+        <strong>Submitted On:</strong> ${requestDate}<br>
+        <strong>Status:</strong> <span class="fw-bold ${request.Status.toLowerCase()}-text">${
+      request.Status
+    }</span>
+      </div>
+  `;
+
+    if (request.Remarks) {
+      detailsHtml += `
+      <div class="mb-3">
+        <strong>Remarks:</strong><br>
+        ${request.Remarks}
+      </div>
+    `;
+    }
+
+    // Add approval or rejection info if applicable
+    if (request.Status === "Approved" && request.Approved_Timestamp) {
+      detailsHtml += `
+      <div class="mb-3">
+        <strong>Approved By:</strong> ${request.Approved_By}<br>
+        <strong>Approved On:</strong> ${formatDate(request.Approved_Timestamp)}
+      </div>
+    `;
+    } else if (request.Status === "Rejected" && request.Rejected_Timestamp) {
+      detailsHtml += `
+      <div class="mb-3">
+        <strong>Rejected By:</strong> ${request.Rejected_By}<br>
+        <strong>Rejected On:</strong> ${formatDate(request.Rejected_Timestamp)}
+      </div>
+    `;
+    }
+
+    // Add edit info if applicable
+    if (request.Edit_Timestamp) {
+      detailsHtml += `
+      <div class="mb-3">
+        <strong>Last Edited By:</strong> ${request.Edit_By}<br>
+        <strong>Edited On:</strong> ${formatDate(request.Edit_Timestamp)}
+      </div>
+    `;
+    }
+
+    detailsHtml += `</div>`;
+
+    // Update modal content and show
+    document.getElementById("requestDetailsContent").innerHTML = detailsHtml;
+    const modal = new bootstrap.Modal(
+      document.getElementById("requestDetailsModal")
+    );
+    modal.show();
+  }
+
+  /**
+   * Approve a request (supervisor only)
+   */
+  function approveRequest(requestId) {
+    // Show confirmation dialog
+    Swal.fire({
+      title: "Confirm Approval",
+      text: "Are you sure you want to approve this OT request?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#28a745",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, Approve",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Show loading indicator
+        Swal.fire({
+          title: "Processing...",
+          text: "Approving the request. Please wait.",
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          showConfirmButton: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        // Call server-side function
+        google.script.run
+          .withSuccessHandler(onApproveRejectSuccess)
+          .withFailureHandler(onApproveRejectError)
+          .updateRequestStatus(requestId, "approve", currentUser.fullName);
+      }
+    });
+  }
+
+  /**
+   * Reject a request (supervisor only)
+   */
+  function rejectRequest(requestId) {
+    // Show confirmation dialog
+    Swal.fire({
+      title: "Confirm Rejection",
+      text: "Are you sure you want to reject this OT request?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc3545",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, Reject",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Show loading indicator
+        Swal.fire({
+          title: "Processing...",
+          text: "Rejecting the request. Please wait.",
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          showConfirmButton: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        // Call server-side function
+        google.script.run
+          .withSuccessHandler(onApproveRejectSuccess)
+          .withFailureHandler(onApproveRejectError)
+          .updateRequestStatus(requestId, "reject", currentUser.fullName);
+      }
+    });
+  }
+
+  /**
+   * Handle successful approval or rejection
+   */
+  function onApproveRejectSuccess(response) {
+    console.log("Approve/Reject response:", response);
+
+    if (response.success) {
+      // Show success message
+      const action = response.action === "approve" ? "approved" : "rejected";
+      const title =
+        response.action === "approve" ? "Request Approved" : "Request Rejected";
+
+      Swal.fire({
+        icon: "success",
+        title: title,
+        text: `The OT request has been ${action} successfully.`,
+        confirmButtonColor: "#4863A0",
+      }).then(() => {
+        loadSupervisorRequests();
+        loadTeamMembers();
+      });
+    } else {
+      // Show error message
+      Swal.fire({
+        icon: "error",
+        title: "Action Failed",
+        text:
+          response.message || "An error occurred while processing the request.",
+        confirmButtonColor: "#4863A0",
+      });
+    }
+  }
+
+  /**
+   * Handle approval or rejection error
+   */
+  function onApproveRejectError(error) {
+    console.error("Approve/Reject error:", error);
+
+    // Show error message
+    Swal.fire({
+      icon: "error",
+      title: "System Error",
+      text: "An error occurred while processing the request. Please try again later.",
+      confirmButtonColor: "#4863A0",
+    });
+  }
+  /**
+   * Show the edit request modal
+   */
+  /**
+   * Show the edit request modal
+   */
+  function showEditRequestModal(requestId) {
+    // Find the request by ID
+    const request = allRequests.find((req) => req.Request_ID === requestId);
+
+    if (!request) {
+      console.error("Request not found:", requestId);
+      return;
+    }
+
+    // Populate form with request data
+    document.getElementById("editRequestId").value = requestId;
+    document.getElementById("editOtCategory").value = request.Category;
+
+    // Update OT names dropdown
+    updateEditOTNames();
+
+    // Set OT name after dropdown is populated
+    setTimeout(() => {
+      document.getElementById("editOtName").value = request.OT_ID;
+    }, 100);
+
+    // Format dates for datetime-local input
+    const startTime = new Date(request.Start_Time);
+    const endTime = new Date(request.End_Time);
+
+    const formatDateTimeLocal = (date) => {
+      return (
+        date.getFullYear() +
+        "-" +
+        String(date.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(date.getDate()).padStart(2, "0") +
+        "T" +
+        String(date.getHours()).padStart(2, "0") +
+        ":" +
+        String(date.getMinutes()).padStart(2, "0")
+      );
+    };
+
+    document.getElementById("editStartTime").value =
+      formatDateTimeLocal(startTime);
+    document.getElementById("editEndTime").value = formatDateTimeLocal(endTime);
+
+    // Use the new editTotalHoursDisplay and editTotalHoursInput elements
+    document.getElementById("editTotalHoursDisplay").textContent =
+      request.Requested_Hours.toFixed(2) + " hours";
+    document.getElementById("editTotalHoursInput").value =
+      request.Requested_Hours.toFixed(2);
+
+    document.getElementById("editRemarks").value = request.Remarks || "";
+
+    // Show modal
+    const modal = new bootstrap.Modal(
+      document.getElementById("editRequestModal")
+    );
+    modal.show();
+  }
+
+  /**
+   * Update an existing OT request
+   */
+  function updateRequest() {
+    // Validate form
+    const form = document.getElementById("editRequestForm");
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    // Get form values
+    const requestId = document.getElementById("editRequestId").value;
+    const otId = document.getElementById("editOtName").value;
+    const startTime = document.getElementById("editStartTime").value;
+    const endTime = document.getElementById("editEndTime").value;
+    const totalHours = document.getElementById("editTotalHoursInput").value; // Use hidden input value
+    const remarks = document.getElementById("editRemarks").value;
+
+    // Set loading state
+    const updateBtn = document.getElementById("updateRequestBtn");
+    const updateBtnText = document.getElementById("updateBtnText");
+    const updateBtnLoader = document.getElementById("updateBtnLoader");
+
+    updateBtn.disabled = true;
+    updateBtnText.classList.add("d-none");
+    updateBtnLoader.classList.remove("d-none");
+
+    // Create edit data
+    const editData = {
+      otId: otId,
+      startTime: startTime,
+      endTime: endTime,
+      totalHours: totalHours, // Add totalHours to edit data
+      remarks: remarks,
+    };
+
+    // Show confirmation dialog
+    Swal.fire({
+      title: "Confirm Edit",
+      text: "Are you sure you want to update this OT request?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#4863A0",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, Update",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Submit the edit
+        google.script.run
+          .withSuccessHandler(onRequestEdited)
+          .withFailureHandler(onEditError)
+          .editOTRequest(requestId, editData, currentUser.fullName);
+      } else {
+        // Reset loading state
+        updateBtn.disabled = false;
+        updateBtnText.classList.remove("d-none");
+        updateBtnLoader.classList.add("d-none");
+      }
+    });
+  }
+
+  /**
+   * Handle successful request edit
+   */
+  function onRequestEdited(response) {
+    console.log("Request edited:", response);
+
+    // Reset loading state
+    const updateBtn = document.getElementById("updateRequestBtn");
+    const updateBtnText = document.getElementById("updateBtnText");
+    const updateBtnLoader = document.getElementById("updateBtnLoader");
+
+    updateBtn.disabled = false;
+    updateBtnText.classList.remove("d-none");
+    updateBtnLoader.classList.add("d-none");
+
+    if (response.success) {
+      // Hide modal
+      bootstrap.Modal.getInstance(
+        document.getElementById("editRequestModal")
+      ).hide();
+
+      // Show success message
+      Swal.fire({
+        icon: "success",
+        title: "Request Updated",
+        text: "Your OT request has been updated successfully.",
+        confirmButtonColor: "#4863A0",
+      }).then(() => {
+        // Reload employee requests
+        loadEmployeeRequests();
+      });
+    } else {
+      // Show error message
+      Swal.fire({
+        icon: "error",
+        title: "Edit Error",
+        text:
+          response.message || "An error occurred while updating your request.",
+        confirmButtonColor: "#4863A0",
+      });
+    }
+  }
+
+  /**
+   * Handle request edit error
+   */
+  function onEditError(error) {
+    console.error("Edit error:", error);
+
+    // Reset loading state
+    const updateBtn = document.getElementById("updateRequestBtn");
+    const updateBtnText = document.getElementById("updateBtnText");
+    const updateBtnLoader = document.getElementById("updateBtnLoader");
+
+    updateBtn.disabled = false;
+    updateBtnText.classList.remove("d-none");
+    updateBtnLoader.classList.add("d-none");
+
+    // Show error message
+    Swal.fire({
+      icon: "error",
+      title: "System Error",
+      text: "An error occurred while processing your edit. Please try again later.",
+      confirmButtonColor: "#4863A0",
+    });
+  }
+
+  /**
+   * Refresh dashboard data (works for both employee and supervisor)
+   */
+  /**
+   * Refresh dashboard data (works for both employee and supervisor)
+   * @param {string} dashboardType - 'employee' or 'supervisor'
+   */
+  function refreshDashboard(dashboardType) {
+    loadDashboardData(dashboardType, false);
+  }
+
+  /**
+   * Update the "last updated" timestamp
+   */
+  function updateLastUpdatedTime(elementId) {
+    const now = new Date();
+    const formattedTime = now.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.textContent = `Last updated: ${formattedTime}`;
+    }
+  }
+
+  function loadDashboardData(dashboardType, isInitialLoad = false, callback) {
+    // Determine which timestamp element to use
+    const timeId =
+      dashboardType === "employee" ? "empLastUpdatedTime" : "lastUpdatedTime";
+
+    // Show loading state on refresh button if not initial load
+    if (!isInitialLoad) {
+      const btnId =
+        dashboardType === "employee"
+          ? "refreshEmployeeDashboardBtn"
+          : "refreshDashboardBtn";
+      const refreshBtn = document.getElementById(btnId);
+      if (refreshBtn) {
+        refreshBtn.innerHTML =
+          '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+        refreshBtn.disabled = true;
+      }
+    }
+
+    // Show loading overlay if it's not already visible
+    if (!Swal.isVisible()) {
+      Swal.fire({
+        title: isInitialLoad ? "Loading Dashboard" : "Refreshing Data...",
+        text: isInitialLoad
+          ? "Please wait while we prepare your dashboard..."
+          : "Please wait while we fetch the latest information.",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+    }
+
+    // Create counters to track how many operations have completed
+    let totalOperations = dashboardType === "employee" ? 3 : 2; // Number of API calls we'll make
+    let completedOperations = 0;
+
+    // Function to check if all operations are complete
+    const checkAllComplete = () => {
+      completedOperations++;
+      if (completedOperations === totalOperations) {
+        // All operations are complete
+        updateLastUpdatedTime(timeId);
+
+        // If it's not an initial load, reset the refresh button
+        if (!isInitialLoad) {
+          const btnId =
+            dashboardType === "employee"
+              ? "refreshEmployeeDashboardBtn"
+              : "refreshDashboardBtn";
+          const refreshBtn = document.getElementById(btnId);
+          if (refreshBtn) {
+            refreshBtn.innerHTML =
+              '<i class="bi bi-arrow-clockwise"></i> Refresh';
+            refreshBtn.disabled = false;
+          }
+        }
+
+        // Close the loading dialog
+        Swal.close();
+
+        // Execute callback if provided
+        if (typeof callback === "function") {
+          callback();
+        }
+      }
+    };
+
+    if (dashboardType === "employee") {
+      // Load employee dashboard data
+      google.script.run
+        .withSuccessHandler((data) => {
+          onOTCatalogLoaded(data);
+          checkAllComplete();
+        })
+        .withFailureHandler((error) => {
+          onDataLoadError(error);
+          checkAllComplete();
+        })
+        .getOTCatalog();
+
+      google.script.run
+        .withSuccessHandler((data) => {
+          onSupervisorsLoaded(data);
+          checkAllComplete();
+        })
+        .withFailureHandler((error) => {
+          onDataLoadError(error);
+          checkAllComplete();
+        })
+        .getSupervisors(currentUser.userId);
+
+      google.script.run
+        .withSuccessHandler((data) => {
+          onEmployeeRequestsLoaded(data);
+          checkAllComplete();
+        })
+        .withFailureHandler((error) => {
+          onDataLoadError(error);
+          checkAllComplete();
+        })
+        .getEmployeeRequests(currentUser.userId);
+    } else {
+      // Load supervisor dashboard data
+      google.script.run
+        .withSuccessHandler((data) => {
+          onSupervisorRequestsLoaded(data);
+          checkAllComplete();
+        })
+        .withFailureHandler((error) => {
+          onDataLoadError(error);
+          checkAllComplete();
+        })
+        .getSupervisorRequests(currentUser.userId);
+
+      google.script.run
+        .withSuccessHandler((data) => {
+          onTeamMembersLoaded(data);
+          checkAllComplete();
+        })
+        .withFailureHandler((error) => {
+          onDataLoadError(error);
+          checkAllComplete();
+        })
+        .getTeamMembers(currentUser.userId);
+    }
+  }
+</script>

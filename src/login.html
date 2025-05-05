@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OT Request System - Login</title>
+
+    <!-- Include Bootstrap -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Include SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Include Lodash -->
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+
+    <?!= include('login_css'); ?>
+  </head>
+  <body>
+    <div class="container-fluid p-0 h-100">
+      <div class="row g-0 h-100">
+        <!-- Left Side - Login Form -->
+        <div class="col-md-5 login-form-container">
+          <div class="login-form">
+            <h1>OT Request System</h1>
+
+            <div class="mb-3">
+              <label for="username" class="form-label">Username</label>
+              <input
+                type="text"
+                class="form-control"
+                id="username"
+                placeholder="Enter your username"
+              />
+            </div>
+
+            <div class="mb-4">
+              <label for="password" class="form-label">Password</label>
+              <input
+                type="password"
+                class="form-control"
+                id="password"
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <button type="button" id="loginBtn" class="btn btn-primary w-100">
+              <span id="loginBtnText">Login</span>
+              <span
+                id="loginBtnLoader"
+                class="spinner-border spinner-border-sm d-none"
+                role="status"
+                aria-hidden="true"
+              ></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Side - Welcome and Info -->
+        <div class="col-md-7 welcome-container">
+          <div class="welcome-content">
+            <h1 class="welcome-title">Welcome to OT Request System</h1>
+
+            <p class="welcome-description">
+              This system allows employees to easily request overtime,
+              supervisors to approve requests, and managers to oversee the
+              entire process.
+            </p>
+
+            <div class="features">
+              <div class="feature-item">
+                <span class="feature-icon">✅</span>
+                <span class="feature-text">Easy request submission</span>
+              </div>
+
+              <div class="feature-item">
+                <span class="feature-icon">✅</span>
+                <span class="feature-text">Real-time status tracking</span>
+              </div>
+
+              <div class="feature-item">
+                <span class="feature-icon">✅</span>
+                <span class="feature-text">Quick approval process</span>
+              </div>
+
+              <div class="feature-item">
+                <span class="feature-icon">✅</span>
+                <span class="feature-text">Comprehensive reporting</span>
+              </div>
+            </div>
+
+            <div class="announcements mt-4">
+              <h3 class="announcements-title">Announcements</h3>
+              <div class="announcements-container">
+                <div class="announcement-item">
+                  <h4>Welcome to the new OT Request System.</h4>
+                  <p>
+                    This platform has been designed to streamline the overtime
+                    request process.
+                  </p>
+                </div>
+
+                <div class="announcement-item">
+                  <p>
+                    If you encounter any issues, please contact the IT
+                    department at
+                    <a href="mailto:it.support@company.com"
+                      >it.support@company.com</a
+                    >
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container-fluid text-center py-2">
+        <p class="mb-0">&copy; 2025 OT Request System. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <!-- Include JavaScript -->
+    <script>
+      window.scriptUrl = "<?= scriptUrl ?>"; // ✅ attach to global `window`
+    </script>
+
+    <?!= include('login_js'); ?>
+  </body>
+</html>

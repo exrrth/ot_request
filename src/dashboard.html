@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OT Request System - Dashboard</title>
+
+    <!-- Include Bootstrap -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+    />
+
+    <!-- Include SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Include Lodash -->
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+
+    <!-- Include CSS -->
+    <?!= include('dashboard_css'); ?>
+  </head>
+  <body>
+    <div class="container h-100 p-0">
+      <!-- Top Navigation -->
+      <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container">
+          <a class="navbar-brand" href="#" id="navbarBrandTitle"
+            >OT Request Management</a
+          >
+
+          <div class="d-flex align-items-center ms-auto">
+            <div class="user-info me-3">
+              <span id="userFullName">Loading...</span>
+            </div>
+
+            <div class="user-avatar">
+              <span id="userInitials">--</span>
+            </div>
+
+            <div class="dropdown ms-2">
+              <button
+                class="btn dropdown-toggle"
+                type="button"
+                id="userDropdown"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i class="bi bi-chevron-down"></i>
+              </button>
+              <ul
+                class="dropdown-menu dropdown-menu-end"
+                aria-labelledby="userDropdown"
+              >
+                <li>
+                  <a class="dropdown-item" href="#" id="logoutBtn">Logout</a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main Content Area -->
+      <div class="container mt-4 pb-5">
+        <!-- Employee Dashboard View -->
+        <div id="employeeDashboard" class="dashboard-container">
+          <!-- User Profile Card -->
+          <div class="card mb-4 profile-card">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3 mb-md-0">
+                  <div class="d-flex align-items-center">
+                    <div class="profile-avatar me-3">
+                      <span id="profileInitials">--</span>
+                    </div>
+                    <div class="profile-info">
+                      <h2 id="profileName">Loading...</h2>
+                      <p id="profileTitle">Loading...</p>
+                      <p id="profileId">Employee ID: Loading...</p>
+                      <p id="profileEmail">Email: Loading...</p>
+                      <p id="profileStartDate">Start Date: Loading...</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3 mb-3 mb-md-0">
+                  <div class="stat-card">
+                    <h3>Hours Remaining</h3>
+                    <div class="d-flex align-items-baseline">
+                      <div class="stat-value" id="hoursRemaining">--</div>
+                      <div class="stat-meta ms-2" id="hoursTotal">/ -- hrs</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="stat-card">
+                    <h3>This Month</h3>
+                    <div class="stat-value" id="hoursThisMonth">--</div>
+                    <div class="stat-meta">hours</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- OT Requests Section -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center">
+              <h2 class="section-title mb-0 me-3">OT Requests</h2>
+              <button
+                class="btn btn-outline-primary py-1 px-2 me-3"
+                id="refreshEmployeeDashboardBtn"
+                onclick="refreshDashboard()"
+              >
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+              </button>
+              <small class="text-muted" id="empLastUpdatedTime"
+                >Last updated: Never</small
+              >
+            </div>
+            <button class="btn btn-primary" id="newRequestBtn">
+              <i class="bi bi-plus"></i> New Request
+            </button>
+          </div>
+
+          <!-- Stats Cards -->
+          <div class="row mb-4 stats-row">
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+              <div class="card stat-card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">All Requests</h5>
+                  <div class="stat-number text-primary" id="allRequestsCount">
+                    -
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+              <div class="card stat-card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">Pending</h5>
+                  <div
+                    class="stat-number text-warning"
+                    id="pendingRequestsCount"
+                  >
+                    -
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+              <div class="card stat-card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">Approved</h5>
+                  <div
+                    class="stat-number text-success"
+                    id="approvedRequestsCount"
+                  >
+                    -
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+              <div class="card stat-card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">Rejected</h5>
+                  <div
+                    class="stat-number text-danger"
+                    id="rejectedRequestsCount"
+                  >
+                    -
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs for filtering -->
+          <ul class="nav nav-tabs mb-4" id="requestsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link active"
+                id="all-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#all-tab-pane"
+                type="button"
+                role="tab"
+                aria-controls="all-tab-pane"
+                aria-selected="true"
+              >
+                All
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="pending-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#pending-tab-pane"
+                type="button"
+                role="tab"
+                aria-controls="pending-tab-pane"
+                aria-selected="false"
+              >
+                Pending
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="approved-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#approved-tab-pane"
+                type="button"
+                role="tab"
+                aria-controls="approved-tab-pane"
+                aria-selected="false"
+              >
+                Approved
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="rejected-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#rejected-tab-pane"
+                type="button"
+                role="tab"
+                aria-controls="rejected-tab-pane"
+                aria-selected="false"
+              >
+                Rejected
+              </button>
+            </li>
+          </ul>
+
+          <!-- Filters and Search -->
+          <div class="row mb-4">
+            <div class="col-md-4 mb-3 mb-md-0">
+              <div class="input-group">
+                <span class="input-group-text"
+                  ><i class="bi bi-search"></i
+                ></span>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="searchRequests"
+                  placeholder="Search requests..."
+                />
+              </div>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+              <select class="form-select" id="dateRangeFilter">
+                <option value="">Date Range</option>
+                <option value="today">Today</option>
+                <option value="thisWeek">This Week</option>
+                <option value="thisMonth">This Month</option>
+                <option value="lastMonth">Last Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+              <select class="form-select" id="departmentFilter">
+                <option value="">Department</option>
+                <option value="IT">IT Department</option>
+                <option value="Finance">Finance Department</option>
+                <option value="HR">HR Department</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <select class="form-select" id="sortOptions">
+                <option value="newest">Sort: Newest</option>
+                <option value="oldest">Sort: Oldest</option>
+                <option value="hoursAsc">Hours: Low to High</option>
+                <option value="hoursDesc">Hours: High to Low</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tab Content -->
+          <div class="tab-content" id="requestsTabContent">
+            <!-- All Requests Tab -->
+            <div
+              class="tab-pane fade show active"
+              id="all-tab-pane"
+              role="tabpanel"
+              aria-labelledby="all-tab"
+              tabindex="0"
+            >
+              <div class="requests-container" id="allRequestsContainer">
+                <!-- Request cards will be dynamically added here -->
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass" style="font-size: 2rem"></i>
+                  <p class="mt-3">Loading requests...</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pending Requests Tab -->
+            <div
+              class="tab-pane fade"
+              id="pending-tab-pane"
+              role="tabpanel"
+              aria-labelledby="pending-tab"
+              tabindex="0"
+            >
+              <div class="requests-container" id="pendingRequestsContainer">
+                <!-- Pending request cards will be dynamically added here -->
+              </div>
+            </div>
+
+            <!-- Approved Requests Tab -->
+            <div
+              class="tab-pane fade"
+              id="approved-tab-pane"
+              role="tabpanel"
+              aria-labelledby="approved-tab"
+              tabindex="0"
+            >
+              <div class="requests-container" id="approvedRequestsContainer">
+                <!-- Approved request cards will be dynamically added here -->
+              </div>
+            </div>
+
+            <!-- Rejected Requests Tab -->
+            <div
+              class="tab-pane fade"
+              id="rejected-tab-pane"
+              role="tabpanel"
+              aria-labelledby="rejected-tab"
+              tabindex="0"
+            >
+              <div class="requests-container" id="rejectedRequestsContainer">
+                <!-- Rejected request cards will be dynamically added here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Supervisor Dashboard View -->
+        <div
+          id="supervisorDashboard"
+          class="dashboard-container"
+          style="display: none"
+        >
+          <!-- User Profile Card -->
+          <div class="card mb-4 profile-card">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3 mb-md-0">
+                  <div class="d-flex align-items-center">
+                    <div class="profile-avatar me-3">
+                      <span id="supProfileInitials">--</span>
+                    </div>
+                    <div class="profile-info">
+                      <h2 id="supProfileName">Loading...</h2>
+                      <p id="supProfileTitle">Loading...</p>
+                      <p id="supProfileId">Employee ID: Loading...</p>
+                      <p id="supProfileEmail">Email: Loading...</p>
+                      <p id="supProfileStartDate">Start Date: Loading...</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3 mb-3 mb-md-0">
+                  <div class="stat-card">
+                    <h3>Pending Reviews</h3>
+                    <div class="stat-value" id="pendingReviews">--</div>
+                    <div class="stat-meta">requests</div>
+                  </div>
+                </div>
+                <div class="col-md-3 mb-3 mb-md-0">
+                  <div class="stat-card">
+                    <h3>Team OT Hours</h3>
+                    <div class="stat-value" id="teamOTHours">--</div>
+                    <div class="stat-meta">this month</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Approval Dashboard Section -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center">
+              <h2 class="section-title mb-0 me-3">Approval Dashboard</h2>
+              <button
+                class="btn btn-outline-primary py-1 px-2 me-3"
+                id="refreshDashboardBtn"
+                onclick="refreshDashboard()"
+              >
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+              </button>
+              <small class="text-muted" id="lastUpdatedTime"
+                >Last updated: Never</small
+              >
+            </div>
+          </div>
+
+          <!-- Stats Cards -->
+          <div class="row mb-4 stats-row">
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+              <div class="card stat-card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">Pending Review</h5>
+                  <div class="stat-number text-warning" id="supPendingCount">
+                    -
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+              <div class="card stat-card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">Approved</h5>
+                  <div class="stat-number text-success" id="supApprovedCount">
+                    -
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+              <div class="card stat-card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">Rejected</h5>
+                  <div class="stat-number text-danger" id="supRejectedCount">
+                    -
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+              <div class="card stat-card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">Team Members</h5>
+                  <div class="stat-number text-primary" id="teamMembersCount">
+                    -
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs for supervisor view -->
+          <ul class="nav nav-tabs mb-4" id="supervisorTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link active"
+                id="pending-approval-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#pending-approval-pane"
+                type="button"
+                role="tab"
+                aria-controls="pending-approval-pane"
+                aria-selected="true"
+              >
+                Pending Approval
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="approval-history-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#approval-history-pane"
+                type="button"
+                role="tab"
+                aria-controls="approval-history-pane"
+                aria-selected="false"
+              >
+                Approval History
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="team-reports-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#team-reports-pane"
+                type="button"
+                role="tab"
+                aria-controls="team-reports-pane"
+                aria-selected="false"
+              >
+                Team Reports
+              </button>
+            </li>
+          </ul>
+
+          <!-- Filters and Search for Supervisor View -->
+          <div class="row mb-4">
+            <div class="col-md-4 mb-3 mb-md-0">
+              <div class="input-group">
+                <span class="input-group-text"
+                  ><i class="bi bi-search"></i
+                ></span>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="supSearchRequests"
+                  placeholder="Search requests..."
+                />
+              </div>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+              <select class="form-select" id="supTeamMemberFilter">
+                <option value="">Team Member</option>
+                <!-- Team members will be added dynamically -->
+              </select>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+              <select class="form-select" id="supDateRangeFilter">
+                <option value="">Date Range</option>
+                <option value="today">Today</option>
+                <option value="thisWeek">This Week</option>
+                <option value="thisMonth">This Month</option>
+                <option value="lastMonth">Last Month</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <select class="form-select" id="supSortOptions">
+                <option value="dateSubmitted">Sort: Date Submitted</option>
+                <option value="employeeName">Sort: Employee Name</option>
+                <option value="hoursDesc">Hours: High to Low</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Supervisor Tab Content -->
+          <div class="tab-content" id="supervisorTabContent">
+            <!-- Pending Approval Tab -->
+            <div
+              class="tab-pane fade show active"
+              id="pending-approval-pane"
+              role="tabpanel"
+              aria-labelledby="pending-approval-tab"
+              tabindex="0"
+            >
+              <div class="requests-container" id="supPendingContainer">
+                <!-- Pending approval requests will be dynamically added here -->
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass" style="font-size: 2rem"></i>
+                  <p class="mt-3">Loading pending requests...</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Approval History Tab -->
+            <div
+              class="tab-pane fade"
+              id="approval-history-pane"
+              role="tabpanel"
+              aria-labelledby="approval-history-tab"
+              tabindex="0"
+            >
+              <div class="requests-container" id="supHistoryContainer">
+                <!-- Approval history will be dynamically added here -->
+              </div>
+            </div>
+
+            <!-- Team Reports Tab -->
+            <div
+              class="tab-pane fade"
+              id="team-reports-pane"
+              role="tabpanel"
+              aria-labelledby="team-reports-tab"
+              tabindex="0"
+            >
+              <div class="card">
+                <div class="card-body">
+                  <h3 class="card-title mb-4">Team Activity Summary</h3>
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>Team Member</th>
+                          <th>Total Hours</th>
+                          <th>Pending</th>
+                          <th>Approved</th>
+                          <th>Rejected</th>
+                        </tr>
+                      </thead>
+                      <tbody id="teamActivityTable">
+                        <!-- Team activity data will be dynamically added here -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Request Modal -->
+    <div
+      class="modal fade"
+      id="newRequestModal"
+      tabindex="-1"
+      aria-labelledby="newRequestModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="newRequestModalLabel">
+              New OT Request
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="newRequestForm">
+              <div class="row mb-3">
+                <!-- OT Category | OT Type -->
+                <div class="col-md-6">
+                  <label for="otCategory" class="form-label">OT Category</label>
+                  <select class="form-select" id="otCategory" required>
+                    <option value="">Select OT Category</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="otName" class="form-label">OT Type</label>
+                  <select class="form-select" id="otName" required disabled>
+                    <option value="">Select OT Type</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row mb-3">
+                <!-- Start Time | End Time -->
+                <div class="col-md-6">
+                  <label for="startTime" class="form-label">Start Time</label>
+                  <input
+                    type="datetime-local"
+                    class="form-control"
+                    id="startTime"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label for="endTime" class="form-label">End Time</label>
+                  <input
+                    type="datetime-local"
+                    class="form-control"
+                    id="endTime"
+                    required
+                  />
+                  <small class="text-muted mt-1 d-block"
+                    >Total Hours: <span id="totalHoursDisplay">0</span></small
+                  >
+                  <input
+                    type="hidden"
+                    id="totalHoursInput"
+                    name="totalHoursInput"
+                  />
+                </div>
+              </div>
+
+              <div class="row">
+                <!-- Supervisor | Remarks -->
+                <div class="col-md-6">
+                  <label for="supervisor" class="form-label">Supervisor</label>
+                  <select class="form-select" id="supervisor" required>
+                    <option value="">Select Supervisor</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="remarks" class="form-label">Remarks</label>
+                  <textarea
+                    class="form-control"
+                    id="remarks"
+                    rows="3"
+                    placeholder="Add any additional information"
+                  ></textarea>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancel
+            </button>
+            <button type="button" class="btn btn-primary" id="submitRequestBtn">
+              <span id="submitBtnText">Submit Request</span>
+              <span id="submitBtnLoader" class="d-none">
+                <span
+                  class="spinner-border spinner-border-sm"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                Submitting...
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Request Modal -->
+    <div
+      class="modal fade"
+      id="editRequestModal"
+      tabindex="-1"
+      aria-labelledby="editRequestModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editRequestModalLabel">
+              Edit OT Request
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="editRequestForm">
+              <input type="hidden" id="editRequestId" />
+
+              <div class="row mb-3">
+                <!-- OT Category | OT Type -->
+                <div class="col-md-6">
+                  <label for="editOtCategory" class="form-label"
+                    >OT Category</label
+                  >
+                  <select class="form-select" id="editOtCategory" required>
+                    <option value="">Select Category</option>
+                    <option value="IT">IT Department</option>
+                    <option value="Finance">Finance Department</option>
+                    <option value="HR">HR Department</option>
+                    <option value="Sales">Sales Department</option>
+                    <option value="Operations">Operations Department</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="editOtName" class="form-label">OT Type</label>
+                  <select class="form-select" id="editOtName" required>
+                    <option value="">Select OT Type</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row mb-3">
+                <!-- Start Time | End Time -->
+                <div class="col-md-6">
+                  <label for="editStartTime" class="form-label"
+                    >Start Time</label
+                  >
+                  <input
+                    type="datetime-local"
+                    class="form-control"
+                    id="editStartTime"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label for="editEndTime" class="form-label">End Time</label>
+                  <input
+                    type="datetime-local"
+                    class="form-control"
+                    id="editEndTime"
+                    required
+                  />
+                  <small class="text-muted mt-1 d-block"
+                    >Total Hours:
+                    <span id="editTotalHoursDisplay">0</span></small
+                  >
+                  <input
+                    type="hidden"
+                    id="editTotalHoursInput"
+                    name="editTotalHoursInput"
+                  />
+                </div>
+              </div>
+
+              <div class="row">
+                <!-- Remarks (full width) -->
+                <div class="col-12">
+                  <label for="editRemarks" class="form-label">Remarks</label>
+                  <textarea
+                    class="form-control"
+                    id="editRemarks"
+                    rows="4"
+                    placeholder="Add any additional information"
+                  ></textarea>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancel
+            </button>
+            <button type="button" class="btn btn-primary" id="updateRequestBtn">
+              <span id="updateBtnText">Update Request</span>
+              <span id="updateBtnLoader" class="d-none">
+                <span
+                  class="spinner-border spinner-border-sm"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                Updating...
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Request Details Modal -->
+    <div
+      class="modal fade"
+      id="requestDetailsModal"
+      tabindex="-1"
+      aria-labelledby="requestDetailsModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="requestDetailsModalLabel">
+              Request Details
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body" id="requestDetailsContent">
+            <!-- Request details will be dynamically inserted here -->
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.scriptUrl = "<?= scriptUrl ?>"; // ✅ attach to global `window`
+    </script>
+    <!-- Include JavaScript -->
+    <?!= include('dashboard_js'); ?>
+
+    <!-- Include Bootstrap JavaScript and Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,173 @@
+<script>
+  /**
+   * Login page client-side functionality
+   */
+
+  // Declare variables at the top level to be accessible to all functions
+  let usernameInput, passwordInput, loginBtn, loginBtnText, loginBtnLoader;
+
+  // Wait for the DOM to be fully loaded
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("Login page loaded");
+
+    // Get form elements
+    usernameInput = document.getElementById("username");
+    passwordInput = document.getElementById("password");
+    loginBtn = document.getElementById("loginBtn");
+    loginBtnText = document.getElementById("loginBtnText");
+    loginBtnLoader = document.getElementById("loginBtnLoader");
+
+    // Check if there's a message in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const message = urlParams.get("message");
+
+    if (message) {
+      switch (message) {
+        case "logout":
+          Swal.fire({
+            icon: "success",
+            title: "Logged Out",
+            text: "You have been successfully logged out.",
+            confirmButtonColor: "#4863A0",
+            timer: 3000,
+          });
+          break;
+
+        case "timeout":
+          Swal.fire({
+            icon: "warning",
+            title: "Session Expired",
+            text: "Your session has expired. Please log in again.",
+            confirmButtonColor: "#4863A0",
+          });
+          break;
+
+        case "unauthorized":
+          Swal.fire({
+            icon: "error",
+            title: "Access Denied",
+            text: "You do not have permission to access that page. Please log in with appropriate credentials.",
+            confirmButtonColor: "#4863A0",
+          });
+          break;
+      }
+    }
+
+    // Add event listener to login button
+    loginBtn.addEventListener("click", handleLogin);
+
+    // Add event listener for Enter key on password field
+    passwordInput.addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        handleLogin();
+      }
+    });
+  });
+
+  /**
+   * Handle login button click
+   */
+  function handleLogin() {
+    // Get username and password values
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    // Validate input
+    if (!username || !password) {
+      Swal.fire({
+        icon: "error",
+        title: "Input Error",
+        text: "Please enter both username and password",
+        confirmButtonColor: "#4863A0",
+      });
+      return;
+    }
+
+    // Show loading state
+    setLoading(true);
+
+    // Call the server-side authentication function
+    google.script.run
+      .withSuccessHandler(onLoginSuccess)
+      .withFailureHandler(onLoginError)
+      .authenticateUser(username, password);
+  }
+
+  /**
+   * Handle successful login
+   */
+  function onLoginSuccess(response) {
+    console.log("Login response:", response);
+
+    if (response.success) {
+      // Store user data in session storage
+      sessionStorage.setItem(
+        "user",
+        JSON.stringify({
+          userId: response.userId,
+          username: response.username,
+          fullName: response.fullName,
+          role: response.role,
+          email: response.email,
+        })
+      );
+
+      // Show success message
+      Swal.fire({
+        icon: "success",
+        title: "Login Successful",
+        text: `Welcome, ${response.fullName}!`,
+        confirmButtonColor: "#4863A0",
+        timer: 1500,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      }).then(() => {
+        window.top.location.href = window.scriptUrl + "?page=dashboard"; // ✅ use global
+      });
+    } else {
+      // Show error message
+      setLoading(false);
+      Swal.fire({
+        icon: "error",
+        title: "Login Failed",
+        text: response.message || "Invalid username or password",
+        confirmButtonColor: "#4863A0",
+      });
+    }
+  }
+
+  /**
+   * Handle login error
+   */
+  function onLoginError(error) {
+    console.error("Login error:", error);
+
+    // Reset loading state
+    setLoading(false);
+
+    // Show error message
+    Swal.fire({
+      icon: "error",
+      title: "System Error",
+      text: "An error occurred during login. Please try again later.",
+      confirmButtonColor: "#4863A0",
+    });
+  }
+
+  /**
+   * Toggle loading state
+   */
+  function setLoading(isLoading) {
+    if (isLoading) {
+      loginBtn.disabled = true;
+      loginBtnText.classList.add("d-none");
+      loginBtnLoader.classList.remove("d-none");
+    } else {
+      loginBtn.disabled = false;
+      loginBtnText.classList.remove("d-none");
+      loginBtnLoader.classList.add("d-none");
+    }
+  }
+</script>
