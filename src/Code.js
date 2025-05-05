@@ -12,92 +12,6 @@ let ss,
   otRequestsSheet,
   supervisorsSheet;
 
-function initSpreadsheet() {
-  try {
-    // Get the active spreadsheet
-    ss_userDatabase = SpreadsheetApp.openById(secret.sheetUserDatabaseId);
-    ss_otData = SpreadsheetApp.openById(secret.sheetRequestId);
-    // Get all required sheets
-    userDatabaseSheet = ss_userDatabase.getSheetByName(
-      secret.sheetUserDataName
-    );
-    otCatalogSheet = ss_otData.getSheetByName(secret.sheetOtCatalogName);
-    loginLogSheet = ss_otData.getSheetByName(secret.sheetLoginLogName);
-    otRequestsSheet = ss_otData.getSheetByName(secret.sheetOtRequestsName);
-    supervisorsSheet = ss_otData.getSheetByName(secret.sheetSupervisors);
-
-    // Log initialization
-    console.log("Spreadsheet initialized successfully");
-  } catch (error) {
-    console.error("Error initializing spreadsheet:", error);
-  }
-}
-
-function getScriptUrl() {
-  return ScriptApp.getService().getUrl();
-}
-
-/**
- * Get user data by userId
- * @param {string} userId - The ID of the user to fetch
- * @return {object} - User data object or null if not found
- */
-function getUserData(userId) {
-  try {
-    initSpreadsheet();
-
-    // Get all users from the User Database
-    const userDataRange = userDatabaseSheet.getDataRange();
-    const userData = userDataRange.getValues();
-
-    // Find header row to identify columns
-    const headers = userData[0];
-    const userIdCol = headers.indexOf("User_ID");
-    const usernameCol = headers.indexOf("Username");
-    const fullNameCol = headers.indexOf("Full_Name");
-    const roleCol = headers.indexOf("Role");
-    const emailCol = headers.indexOf("Email");
-    const isActiveCol = headers.indexOf("Is_Active");
-
-    // Validate column indexes
-    if (
-      userIdCol === -1 ||
-      usernameCol === -1 ||
-      fullNameCol === -1 ||
-      roleCol === -1 ||
-      emailCol === -1 ||
-      isActiveCol === -1
-    ) {
-      console.error("Required columns not found in User Database");
-      return null;
-    }
-
-    // Loop through users to find matching userId
-    for (let i = 1; i < userData.length; i++) {
-      if (
-        userData[i][userIdCol] === userId &&
-        userData[i][isActiveCol] === true
-      ) {
-        // User found, return user data
-        return {
-          userId: userData[i][userIdCol],
-          username: userData[i][usernameCol],
-          fullName: userData[i][fullNameCol],
-          role: userData[i][roleCol],
-          email: userData[i][emailCol],
-        };
-      }
-    }
-
-    // If we reached here, no matching user was found
-    console.warn("User not found for userId:", userId);
-    return null;
-  } catch (error) {
-    console.error("Error getting user data:", error);
-    return null;
-  }
-}
-
 /**
  * Main function to serve the UI
  */
@@ -133,6 +47,7 @@ function getUserData(userId) {
 //   }
 // }
 
+//#region Initialization
 function doGet(e) {
   // Initialize the spreadsheet
   initSpreadsheet();
@@ -163,6 +78,33 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
+function initSpreadsheet() {
+  try {
+    // Get the active spreadsheet
+    ss_userDatabase = SpreadsheetApp.openById(secret.sheetUserDatabaseId);
+    ss_otData = SpreadsheetApp.openById(secret.sheetRequestId);
+    // Get all required sheets
+    userDatabaseSheet = ss_userDatabase.getSheetByName(
+      secret.sheetUserDataName
+    );
+    otCatalogSheet = ss_otData.getSheetByName(secret.sheetOtCatalogName);
+    loginLogSheet = ss_otData.getSheetByName(secret.sheetLoginLogName);
+    otRequestsSheet = ss_otData.getSheetByName(secret.sheetOtRequestsName);
+    supervisorsSheet = ss_otData.getSheetByName(secret.sheetSupervisors);
+
+    // Log initialization
+    console.log("Spreadsheet initialized successfully");
+  } catch (error) {
+    console.error("Error initializing spreadsheet:", error);
+  }
+}
+
+function getScriptUrl() {
+  return ScriptApp.getService().getUrl();
+}
+//#endregion
+
+//#region Authentication
 /**
  * Authentication function to validate user credentials
  */
@@ -399,7 +341,69 @@ function logUserLogout(userId) {
     return false;
   }
 }
+//#endregion
 
+//#region Get Methods
+/**
+ * Get user data by userId
+ * @param {string} userId - The ID of the user to fetch
+ * @return {object} - User data object or null if not found
+ */
+function getUserData(userId) {
+  try {
+    initSpreadsheet();
+
+    // Get all users from the User Database
+    const userDataRange = userDatabaseSheet.getDataRange();
+    const userData = userDataRange.getValues();
+
+    // Find header row to identify columns
+    const headers = userData[0];
+    const userIdCol = headers.indexOf("User_ID");
+    const usernameCol = headers.indexOf("Username");
+    const fullNameCol = headers.indexOf("Full_Name");
+    const roleCol = headers.indexOf("Role");
+    const emailCol = headers.indexOf("Email");
+    const isActiveCol = headers.indexOf("Is_Active");
+
+    // Validate column indexes
+    if (
+      userIdCol === -1 ||
+      usernameCol === -1 ||
+      fullNameCol === -1 ||
+      roleCol === -1 ||
+      emailCol === -1 ||
+      isActiveCol === -1
+    ) {
+      console.error("Required columns not found in User Database");
+      return null;
+    }
+
+    // Loop through users to find matching userId
+    for (let i = 1; i < userData.length; i++) {
+      if (
+        userData[i][userIdCol] === userId &&
+        userData[i][isActiveCol] === true
+      ) {
+        // User found, return user data
+        return {
+          userId: userData[i][userIdCol],
+          username: userData[i][usernameCol],
+          fullName: userData[i][fullNameCol],
+          role: userData[i][roleCol],
+          email: userData[i][emailCol],
+        };
+      }
+    }
+
+    // If we reached here, no matching user was found
+    console.warn("User not found for userId:", userId);
+    return null;
+  } catch (error) {
+    console.error("Error getting user data:", error);
+    return null;
+  }
+}
 /**
  * Get OT catalog data
  */
@@ -637,6 +641,9 @@ function getSupervisorRequests(supervisorId) {
   }
 }
 
+/**
+ * Get team members for a supervisor
+ */
 function getTeamMembers(supervisorId) {
   // Default return value is an empty array
   let teamMembers = [];
@@ -775,7 +782,9 @@ function getTeamMembers(supervisorId) {
 
   return teamMembers;
 }
+//#endregion
 
+//#region Post Methods
 /**
  * Create a new OT request
  */
@@ -866,7 +875,9 @@ function createOTRequest(requestData) {
     return { success: false, message: "System error: " + error.message };
   }
 }
+//#endregion
 
+//#region Update Methods
 /**
  * Update OT request status (approve or reject)
  */
@@ -1065,6 +1076,7 @@ function editOTRequest(requestId, editData, editorName) {
     return { success: false, message: "System error: " + error.message };
   }
 }
+//#endregion
 
 function test() {
   // getSupervisorRequests("U003");
