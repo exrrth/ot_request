@@ -584,9 +584,106 @@
   /**
    * Create a request card element
    */
+  // function createRequestCard(request, viewType) {
+  //   const cardDiv = document.createElement("div");
+  //   cardDiv.className = `request-card ${request.Status.toLowerCase()}`;
+
+  //   // Format date
+  //   const requestDate = new Date(request.Request_Timestamp);
+  //   const formattedDate = requestDate.toLocaleDateString("en-US", {
+  //     month: "short",
+  //     day: "numeric",
+  //     year: "numeric",
+  //   });
+
+  //   // Format status class
+  //   let statusClass = "pending";
+  //   if (request.Status === "Approved") statusClass = "approved";
+  //   if (request.Status === "Rejected") statusClass = "rejected";
+  //   if (request.Status === "Edited") statusClass = "edited";
+
+  //   // Create card content
+  //   cardDiv.innerHTML = `
+  //   <h3>${request.OT_Name}</h3>
+  //   <div class="request-card-meta">
+  //     <span><i class="bi bi-calendar"></i> ${formattedDate}</span>
+  //     <span><i class="bi bi-clock"></i> ${request.Requested_Hours} hours</span>
+  //     <span><i class="bi bi-building"></i> ${request.Category}</span>
+  //   </div>
+  //   <div class="request-card-reason">
+  //     ${request.Remarks || "No remarks provided"}
+  //   </div>
+  //   <div class="d-flex justify-content-between align-items-center">
+  //     <span class="request-status ${statusClass}">${request.Status}</span>
+  //     <div class="request-actions">
+  //       ${
+  //         viewType === "employee" &&
+  //         (request.Status === "Pending" || request.Status === "Edited")
+  //           ? `<button class="btn btn-sm btn-outline-primary edit-request-btn" data-request-id="${request.Request_ID}">
+  //               <i class="bi bi-pencil"></i> Edit
+  //             </button>`
+  //           : ""
+  //       }
+  //       ${
+  //         viewType === "supervisor" &&
+  //         (request.Status === "Pending" || request.Status === "Edited")
+  //           ? `<button class="btn btn-sm btn-success approve-btn" data-request-id="${request.Request_ID}">
+  //               <i class="bi bi-check-lg"></i> Approve
+  //             </button>
+  //             <button class="btn btn-sm btn-danger reject-btn" data-request-id="${request.Request_ID}">
+  //               <i class="bi bi-x-lg"></i> Reject
+  //             </button>`
+  //           : ""
+  //       }
+  //       <button class="btn btn-sm btn-outline-secondary details-btn" data-request-id="${
+  //         request.Request_ID
+  //       }">
+  //         <i class="bi bi-info-circle"></i> Details
+  //       </button>
+  //     </div>
+  //   </div>
+  // `;
+
+  //   console.log("Request card:", request.Request_ID);
+  //   // Add event listeners to buttons
+  //   cardDiv.querySelectorAll(".edit-request-btn").forEach((btn) => {
+  //     btn.addEventListener("click", function () {
+  //       const requestId = this.getAttribute("data-request-id");
+  //       showEditRequestModal(requestId);
+  //     });
+  //   });
+
+  //   cardDiv.querySelectorAll(".details-btn").forEach((btn) => {
+  //     btn.addEventListener("click", function () {
+  //       const requestId = this.getAttribute("data-request-id");
+  //       showRequestDetails(requestId);
+  //     });
+  //   });
+
+  //   if (viewType === "supervisor") {
+  //     cardDiv.querySelectorAll(".approve-btn").forEach((btn) => {
+  //       btn.addEventListener("click", function () {
+  //         const requestId = this.getAttribute("data-request-id");
+  //         approveRequest(requestId);
+  //       });
+  //     });
+
+  //     cardDiv.querySelectorAll(".reject-btn").forEach((btn) => {
+  //       btn.addEventListener("click", function () {
+  //         const requestId = this.getAttribute("data-request-id");
+  //         rejectRequest(requestId);
+  //       });
+  //     });
+  //   }
+
+  //   return cardDiv;
+  // }
   function createRequestCard(request, viewType) {
     const cardDiv = document.createElement("div");
     cardDiv.className = `request-card ${request.Status.toLowerCase()}`;
+
+    // Add smooth animation attributes
+    cardDiv.setAttribute("data-request-id", request.Request_ID);
 
     // Format date
     const requestDate = new Date(request.Request_Timestamp);
@@ -645,36 +742,88 @@
   `;
 
     console.log("Request card:", request.Request_ID);
+
+    // Add smooth hover animations
+    cardDiv.addEventListener("mouseenter", function () {
+      this.classList.add("card-hover");
+    });
+
+    cardDiv.addEventListener("mouseleave", function () {
+      this.classList.remove("card-hover");
+    });
+
+    // Add appear animation with slight delay based on position
+    setTimeout(() => {
+      cardDiv.classList.add("card-appear");
+    }, 50);
+
     // Add event listeners to buttons
     cardDiv.querySelectorAll(".edit-request-btn").forEach((btn) => {
-      btn.addEventListener("click", function () {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation(); // Prevent event bubbling
         const requestId = this.getAttribute("data-request-id");
-        showEditRequestModal(requestId);
+
+        // Add button press animation
+        this.classList.add("btn-pressed");
+        setTimeout(() => {
+          this.classList.remove("btn-pressed");
+          showEditRequestModal(requestId);
+        }, 150);
       });
     });
 
     cardDiv.querySelectorAll(".details-btn").forEach((btn) => {
-      btn.addEventListener("click", function () {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation(); // Prevent event bubbling
         const requestId = this.getAttribute("data-request-id");
-        showRequestDetails(requestId);
+
+        // Add button press animation
+        this.classList.add("btn-pressed");
+        setTimeout(() => {
+          this.classList.remove("btn-pressed");
+          showRequestDetails(requestId);
+        }, 150);
       });
     });
 
     if (viewType === "supervisor") {
       cardDiv.querySelectorAll(".approve-btn").forEach((btn) => {
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", function (e) {
+          e.stopPropagation(); // Prevent event bubbling
           const requestId = this.getAttribute("data-request-id");
-          approveRequest(requestId);
+
+          // Add button press animation
+          this.classList.add("btn-pressed");
+          setTimeout(() => {
+            this.classList.remove("btn-pressed");
+            approveRequest(requestId);
+          }, 150);
         });
       });
 
       cardDiv.querySelectorAll(".reject-btn").forEach((btn) => {
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", function (e) {
+          e.stopPropagation(); // Prevent event bubbling
           const requestId = this.getAttribute("data-request-id");
-          rejectRequest(requestId);
+
+          // Add button press animation
+          this.classList.add("btn-pressed");
+          setTimeout(() => {
+            this.classList.remove("btn-pressed");
+            rejectRequest(requestId);
+          }, 150);
         });
       });
     }
+
+    // Make the entire card clickable to show details (except when clicking buttons)
+    cardDiv.addEventListener("click", function (e) {
+      // Only trigger if not clicking on a button
+      if (!e.target.closest("button")) {
+        const requestId = this.getAttribute("data-request-id");
+        showRequestDetails(requestId);
+      }
+    });
 
     return cardDiv;
   }
@@ -1180,7 +1329,7 @@
   }
 
   /**
-   * Show request details in a modal
+   * Show request details in a modal with improved styling and animations
    */
   function showRequestDetails(requestId) {
     // Find the request by ID
@@ -1190,6 +1339,10 @@
       console.error("Request not found:", requestId);
       return;
     }
+
+    // Apply smooth entry animation to modal
+    const detailsModal = document.getElementById("requestDetailsModal");
+    detailsModal.classList.add("fade-in-animation");
 
     // Format dates
     const formatDate = (dateStr) => {
@@ -1207,77 +1360,145 @@
     const startDate = formatDate(request.Start_Time);
     const endDate = formatDate(request.End_Time);
 
-    // Create details HTML
+    // Get status for styling
+    const statusClass = request.Status.toLowerCase();
+
+    // Create improved details HTML with better styling
     let detailsHtml = `
     <div class="request-details">
-      <h6 class="mb-3">Request ID: ${request.Request_ID}</h6>
-      
-      <div class="mb-3">
-        <strong>OT Category:</strong> ${request.Category}<br>
-        <strong>OT Name:</strong> ${request.OT_Name}<br>
-        <strong>Requested Hours:</strong> ${request.Requested_Hours.toFixed(
-          2
-        )} hours
-      </div>
-      
-      <div class="mb-3">
-        <strong>Start Time:</strong> ${startDate}<br>
-        <strong>End Time:</strong> ${endDate}
-      </div>
-      
-      <div class="mb-3">
-        <strong>Supervisor:</strong> ${request.Supervisor_Name}<br>
-        <strong>Submitted On:</strong> ${requestDate}<br>
-        <strong>Status:</strong> <span class="fw-bold ${request.Status.toLowerCase()}-text">${
+      <div class="request-details-header ${statusClass}-header mb-4">
+        <div class="request-id-badge">#${request.Request_ID}</div>
+        <h5 class="mb-1">${request.OT_Name}</h5>
+        <span class="details-status-badge ${statusClass}">${
       request.Status
     }</span>
       </div>
-  `;
+      
+      <div class="details-section">
+        <div class="details-row">
+          <div class="details-label"><i class="bi bi-building"></i> Category</div>
+          <div class="details-value">${request.Category}</div>
+        </div>
+        <div class="details-row">
+          <div class="details-label"><i class="bi bi-clock"></i> Hours</div>
+          <div class="details-value">${request.Requested_Hours.toFixed(
+            2
+          )} hours</div>
+        </div>
+      </div>
+      
+      <div class="details-section">
+        <div class="details-row">
+          <div class="details-label"><i class="bi bi-calendar-event"></i> Start</div>
+          <div class="details-value">${startDate}</div>
+        </div>
+        <div class="details-row">
+          <div class="details-label"><i class="bi bi-calendar-check"></i> End</div>
+          <div class="details-value">${endDate}</div>
+        </div>
+      </div>
+      
+      <div class="details-section">
+        <div class="details-row">
+          <div class="details-label"><i class="bi bi-person"></i> Supervisor</div>
+          <div class="details-value">${request.Supervisor_Name}</div>
+        </div>
+        <div class="details-row">
+          <div class="details-label"><i class="bi bi-calendar2"></i> Submitted</div>
+          <div class="details-value">${requestDate}</div>
+        </div>
+      </div>`;
 
+    // Add remarks section if present
     if (request.Remarks) {
       detailsHtml += `
-      <div class="mb-3">
-        <strong>Remarks:</strong><br>
-        ${request.Remarks}
+      <div class="details-section">
+        <div class="details-row remarks-row">
+          <div class="details-label"><i class="bi bi-chat-left-text"></i> Remarks</div>
+          <div class="details-value remarks-value">${request.Remarks}</div>
+        </div>
       </div>
     `;
     }
 
-    // Add approval or rejection info if applicable
+    // Add approval or rejection info with proper styling
     if (request.Status === "Approved" && request.Approved_Timestamp) {
       detailsHtml += `
-      <div class="mb-3">
-        <strong>Approved By:</strong> ${request.Approved_By}<br>
-        <strong>Approved On:</strong> ${formatDate(request.Approved_Timestamp)}
+      <div class="details-section approval-section">
+        <div class="approval-header">
+          <i class="bi bi-check-circle-fill"></i> Approved
+        </div>
+        <div class="details-row">
+          <div class="details-label">Approved By</div>
+          <div class="details-value">${request.Approved_By}</div>
+        </div>
+        <div class="details-row">
+          <div class="details-label">Approved On</div>
+          <div class="details-value">${formatDate(
+            request.Approved_Timestamp
+          )}</div>
+        </div>
       </div>
     `;
     } else if (request.Status === "Rejected" && request.Rejected_Timestamp) {
       detailsHtml += `
-      <div class="mb-3">
-        <strong>Rejected By:</strong> ${request.Rejected_By}<br>
-        <strong>Rejected On:</strong> ${formatDate(request.Rejected_Timestamp)}
+      <div class="details-section rejection-section">
+        <div class="rejection-header">
+          <i class="bi bi-x-circle-fill"></i> Rejected
+        </div>
+        <div class="details-row">
+          <div class="details-label">Rejected By</div>
+          <div class="details-value">${request.Rejected_By}</div>
+        </div>
+        <div class="details-row">
+          <div class="details-label">Rejected On</div>
+          <div class="details-value">${formatDate(
+            request.Rejected_Timestamp
+          )}</div>
+        </div>
       </div>
     `;
     }
 
-    // Add edit info if applicable
+    // Add edit info if applicable with styling
     if (request.Edit_Timestamp) {
       detailsHtml += `
-      <div class="mb-3">
-        <strong>Last Edited By:</strong> ${request.Edit_By}<br>
-        <strong>Edited On:</strong> ${formatDate(request.Edit_Timestamp)}
+      <div class="details-section edit-section">
+        <div class="edit-header">
+          <i class="bi bi-pencil-fill"></i> Last Edit
+        </div>
+        <div class="details-row">
+          <div class="details-label">Edited By</div>
+          <div class="details-value">${request.Edit_By}</div>
+        </div>
+        <div class="details-row">
+          <div class="details-label">Edited On</div>
+          <div class="details-value">${formatDate(request.Edit_Timestamp)}</div>
+        </div>
       </div>
     `;
     }
 
     detailsHtml += `</div>`;
 
-    // Update modal content and show
-    document.getElementById("requestDetailsContent").innerHTML = detailsHtml;
+    // Update modal content and show with smooth transition
+    const modalContent = document.getElementById("requestDetailsContent");
+    modalContent.innerHTML = detailsHtml;
+
+    // Show modal with animation
     const modal = new bootstrap.Modal(
       document.getElementById("requestDetailsModal")
     );
     modal.show();
+
+    // Add event listener to remove animation class when modal is hidden
+    detailsModal.addEventListener(
+      "hidden.bs.modal",
+      function () {
+        detailsModal.classList.remove("fade-in-animation");
+      },
+      { once: true }
+    );
   }
 
   /**
@@ -1622,10 +1843,309 @@
     }
   }
 
+  // function loadDashboardData(dashboardType, isInitialLoad = false, callback) {
+  //   // Determine which timestamp element to use
+  //   const timeId =
+  //     dashboardType === "employee" ? "empLastUpdatedTime" : "lastUpdatedTime";
+
+  //   // Show loading state on refresh button if not initial load
+  //   if (!isInitialLoad) {
+  //     const btnId =
+  //       dashboardType === "employee"
+  //         ? "refreshEmployeeDashboardBtn"
+  //         : "refreshDashboardBtn";
+  //     const refreshBtn = document.getElementById(btnId);
+  //     if (refreshBtn) {
+  //       refreshBtn.innerHTML =
+  //         '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+  //       refreshBtn.disabled = true;
+  //     }
+  //   }
+
+  //   // Show loading overlay if it's not already visible
+  //   if (!Swal.isVisible()) {
+  //     Swal.fire({
+  //       title: isInitialLoad ? "Loading Dashboard" : "Refreshing Data...",
+  //       text: isInitialLoad
+  //         ? "Please wait while we prepare your dashboard..."
+  //         : "Please wait while we fetch the latest information.",
+  //       allowOutsideClick: false,
+  //       didOpen: () => {
+  //         Swal.showLoading();
+  //       },
+  //     });
+  //   }
+
+  //   // Create counters to track how many operations have completed
+  //   let totalOperations = dashboardType === "employee" ? 3 : 2; // Number of API calls we'll make
+  //   let completedOperations = 0;
+
+  //   // Function to check if all operations are complete
+  //   const checkAllComplete = () => {
+  //     completedOperations++;
+  //     if (completedOperations === totalOperations) {
+  //       // All operations are complete
+  //       updateLastUpdatedTime(timeId);
+
+  //       // If it's not an initial load, reset the refresh button
+  //       if (!isInitialLoad) {
+  //         const btnId =
+  //           dashboardType === "employee"
+  //             ? "refreshEmployeeDashboardBtn"
+  //             : "refreshDashboardBtn";
+  //         const refreshBtn = document.getElementById(btnId);
+  //         if (refreshBtn) {
+  //           refreshBtn.innerHTML =
+  //             '<i class="bi bi-arrow-clockwise"></i> Refresh';
+  //           refreshBtn.disabled = false;
+  //         }
+  //       }
+
+  //       // Close the loading dialog
+  //       Swal.close();
+
+  //       // Execute callback if provided
+  //       if (typeof callback === "function") {
+  //         callback();
+  //       }
+  //     }
+  //   };
+
+  //   if (dashboardType === "employee") {
+  //     // Load employee dashboard data
+  //     google.script.run
+  //       .withSuccessHandler((data) => {
+  //         onOTCatalogLoaded(data);
+  //         checkAllComplete();
+  //       })
+  //       .withFailureHandler((error) => {
+  //         onDataLoadError(error);
+  //         checkAllComplete();
+  //       })
+  //       .getOTCatalog();
+
+  //     google.script.run
+  //       .withSuccessHandler((data) => {
+  //         onSupervisorsLoaded(data);
+  //         checkAllComplete();
+  //       })
+  //       .withFailureHandler((error) => {
+  //         onDataLoadError(error);
+  //         checkAllComplete();
+  //       })
+  //       .getSupervisors(currentUser.userId);
+
+  //     google.script.run
+  //       .withSuccessHandler((data) => {
+  //         onEmployeeRequestsLoaded(data);
+  //         checkAllComplete();
+  //       })
+  //       .withFailureHandler((error) => {
+  //         onDataLoadError(error);
+  //         checkAllComplete();
+  //       })
+  //       .getEmployeeRequests(currentUser.userId);
+  //   } else {
+  //     // Load supervisor dashboard data
+  //     google.script.run
+  //       .withSuccessHandler((data) => {
+  //         onSupervisorRequestsLoaded(data);
+  //         checkAllComplete();
+  //       })
+  //       .withFailureHandler((error) => {
+  //         onDataLoadError(error);
+  //         checkAllComplete();
+  //       })
+  //       .getSupervisorRequests(currentUser.userId);
+
+  //     google.script.run
+  //       .withSuccessHandler((data) => {
+  //         onTeamMembersLoaded(data);
+  //         checkAllComplete();
+  //       })
+  //       .withFailureHandler((error) => {
+  //         onDataLoadError(error);
+  //         checkAllComplete();
+  //       })
+  //       .getTeamMembers(currentUser.userId);
+  //   }
+  // }
+
+  /**
+   * Create a request card element with smoother animations and transitions
+   */
+  function createRequestCard(request, viewType) {
+    const cardDiv = document.createElement("div");
+    cardDiv.className = `request-card ${request.Status.toLowerCase()}`;
+
+    // Add smooth animation attributes
+    cardDiv.setAttribute("data-request-id", request.Request_ID);
+
+    // Format date
+    const requestDate = new Date(request.Request_Timestamp);
+    const formattedDate = requestDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    // Format status class
+    let statusClass = "pending";
+    if (request.Status === "Approved") statusClass = "approved";
+    if (request.Status === "Rejected") statusClass = "rejected";
+    if (request.Status === "Edited") statusClass = "edited";
+
+    // Create card content
+    cardDiv.innerHTML = `
+    <h3>${request.OT_Name}</h3>
+    <div class="request-card-meta">
+      <span><i class="bi bi-calendar"></i> ${formattedDate}</span>
+      <span><i class="bi bi-clock"></i> ${request.Requested_Hours} hours</span>
+      <span><i class="bi bi-building"></i> ${request.Category}</span>
+    </div>
+    <div class="request-card-reason">
+      ${request.Remarks || "No remarks provided"}
+    </div>
+    <div class="d-flex justify-content-between align-items-center">
+      <span class="request-status ${statusClass}">${request.Status}</span>
+      <div class="request-actions">
+        ${
+          viewType === "employee" &&
+          (request.Status === "Pending" || request.Status === "Edited")
+            ? `<button class="btn btn-sm btn-outline-primary edit-request-btn" data-request-id="${request.Request_ID}">
+                <i class="bi bi-pencil"></i> Edit
+              </button>`
+            : ""
+        }
+        ${
+          viewType === "supervisor" &&
+          (request.Status === "Pending" || request.Status === "Edited")
+            ? `<button class="btn btn-sm btn-success approve-btn" data-request-id="${request.Request_ID}">
+                <i class="bi bi-check-lg"></i> Approve
+              </button>
+              <button class="btn btn-sm btn-danger reject-btn" data-request-id="${request.Request_ID}">
+                <i class="bi bi-x-lg"></i> Reject
+              </button>`
+            : ""
+        }
+        <button class="btn btn-sm btn-outline-secondary details-btn" data-request-id="${
+          request.Request_ID
+        }">
+          <i class="bi bi-info-circle"></i> Details
+        </button>
+      </div>
+    </div>
+  `;
+
+    console.log("Request card:", request.Request_ID);
+
+    // Add smooth hover animations
+    cardDiv.addEventListener("mouseenter", function () {
+      this.classList.add("card-hover");
+    });
+
+    cardDiv.addEventListener("mouseleave", function () {
+      this.classList.remove("card-hover");
+    });
+
+    // Add appear animation with slight delay based on position
+    setTimeout(() => {
+      cardDiv.classList.add("card-appear");
+    }, 50);
+
+    // Add event listeners to buttons
+    cardDiv.querySelectorAll(".edit-request-btn").forEach((btn) => {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation(); // Prevent event bubbling
+        const requestId = this.getAttribute("data-request-id");
+
+        // Add button press animation
+        this.classList.add("btn-pressed");
+        setTimeout(() => {
+          this.classList.remove("btn-pressed");
+          showEditRequestModal(requestId);
+        }, 150);
+      });
+    });
+
+    cardDiv.querySelectorAll(".details-btn").forEach((btn) => {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation(); // Prevent event bubbling
+        const requestId = this.getAttribute("data-request-id");
+
+        // Add button press animation
+        this.classList.add("btn-pressed");
+        setTimeout(() => {
+          this.classList.remove("btn-pressed");
+          showRequestDetails(requestId);
+        }, 150);
+      });
+    });
+
+    if (viewType === "supervisor") {
+      cardDiv.querySelectorAll(".approve-btn").forEach((btn) => {
+        btn.addEventListener("click", function (e) {
+          e.stopPropagation(); // Prevent event bubbling
+          const requestId = this.getAttribute("data-request-id");
+
+          // Add button press animation
+          this.classList.add("btn-pressed");
+          setTimeout(() => {
+            this.classList.remove("btn-pressed");
+            approveRequest(requestId);
+          }, 150);
+        });
+      });
+
+      cardDiv.querySelectorAll(".reject-btn").forEach((btn) => {
+        btn.addEventListener("click", function (e) {
+          e.stopPropagation(); // Prevent event bubbling
+          const requestId = this.getAttribute("data-request-id");
+
+          // Add button press animation
+          this.classList.add("btn-pressed");
+          setTimeout(() => {
+            this.classList.remove("btn-pressed");
+            rejectRequest(requestId);
+          }, 150);
+        });
+      });
+    }
+
+    // Make the entire card clickable to show details (except when clicking buttons)
+    cardDiv.addEventListener("click", function (e) {
+      // Only trigger if not clicking on a button
+      if (!e.target.closest("button")) {
+        const requestId = this.getAttribute("data-request-id");
+        showRequestDetails(requestId);
+      }
+    });
+
+    return cardDiv;
+  }
+
+  /**
+   * Load dashboard data with smooth transitions and loading states
+   * @param {string} dashboardType - 'employee' or 'supervisor'
+   * @param {boolean} isInitialLoad - Whether this is the initial page load
+   * @param {function} callback - Optional callback to execute after loading
+   */
   function loadDashboardData(dashboardType, isInitialLoad = false, callback) {
     // Determine which timestamp element to use
     const timeId =
       dashboardType === "employee" ? "empLastUpdatedTime" : "lastUpdatedTime";
+
+    // Get dashboard container
+    const dashboardContainer =
+      dashboardType === "employee"
+        ? document.getElementById("employeeDashboard")
+        : document.getElementById("supervisorDashboard");
+
+    // Add loading class for smooth transition
+    if (dashboardContainer) {
+      dashboardContainer.classList.add("loading");
+      dashboardContainer.classList.remove("loaded");
+    }
 
     // Show loading state on refresh button if not initial load
     if (!isInitialLoad) {
@@ -1635,13 +2155,15 @@
           : "refreshDashboardBtn";
       const refreshBtn = document.getElementById(btnId);
       if (refreshBtn) {
+        // Use smooth button transition
+        refreshBtn.classList.add("btn-loading");
         refreshBtn.innerHTML =
           '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
         refreshBtn.disabled = true;
       }
     }
 
-    // Show loading overlay if it's not already visible
+    // Show loading overlay if it's not already visible but with a smooth transition
     if (!Swal.isVisible()) {
       Swal.fire({
         title: isInitialLoad ? "Loading Dashboard" : "Refreshing Data...",
@@ -1649,7 +2171,10 @@
           ? "Please wait while we prepare your dashboard..."
           : "Please wait while we fetch the latest information.",
         allowOutsideClick: false,
-        didOpen: () => {
+        showConfirmButton: false,
+        willOpen: (popup) => {
+          // Add custom animation class
+          popup.classList.add("swal-smooth-fade");
           Swal.showLoading();
         },
       });
@@ -1666,7 +2191,7 @@
         // All operations are complete
         updateLastUpdatedTime(timeId);
 
-        // If it's not an initial load, reset the refresh button
+        // If it's not an initial load, reset the refresh button with animation
         if (!isInitialLoad) {
           const btnId =
             dashboardType === "employee"
@@ -1674,18 +2199,37 @@
               : "refreshDashboardBtn";
           const refreshBtn = document.getElementById(btnId);
           if (refreshBtn) {
-            refreshBtn.innerHTML =
-              '<i class="bi bi-arrow-clockwise"></i> Refresh';
-            refreshBtn.disabled = false;
+            // Smooth transition back to normal state
+            setTimeout(() => {
+              refreshBtn.innerHTML =
+                '<i class="bi bi-arrow-clockwise"></i> Refresh';
+              refreshBtn.disabled = false;
+              refreshBtn.classList.remove("btn-loading");
+            }, 300);
           }
         }
 
-        // Close the loading dialog
-        Swal.close();
+        // Close the loading dialog with smooth transition
+        if (Swal.isVisible()) {
+          // Add a slight delay for smooth transition
+          setTimeout(() => {
+            Swal.close();
+          }, 300);
+        }
+
+        // Apply loaded class with a slight delay for smooth transition
+        setTimeout(() => {
+          if (dashboardContainer) {
+            dashboardContainer.classList.remove("loading");
+            dashboardContainer.classList.add("loaded");
+          }
+        }, 300);
 
         // Execute callback if provided
         if (typeof callback === "function") {
-          callback();
+          setTimeout(() => {
+            callback();
+          }, 350); // Slight delay to ensure animations complete
         }
       }
     };
