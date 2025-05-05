@@ -276,6 +276,7 @@
    * Handle logout button click
    */
   function handleLogout() {
+    console.log("Logout for user id:", currentUser.userId);
     Swal.fire({
       title: "Logout Confirmation",
       text: "Are you sure you want to logout?",
@@ -295,35 +296,27 @@
           },
         });
 
-        // Call your success function after a small delay
-        setTimeout(() => {
-          onLogoutSuccess();
-        }, 1000);
+        // Call the server-side logUserLogout function
+        google.script.run
+          .withSuccessHandler(function () {
+            // Clear session/local storage
+            sessionStorage.clear();
+            localStorage.clear();
+
+            // Redirect to login page
+            window.top.location.href =
+              window.scriptUrl + "?page=login&message=logout";
+          })
+          .withFailureHandler(function (error) {
+            console.error("Logout error:", error);
+            // Still logout even if logging fails
+            sessionStorage.clear();
+            localStorage.clear();
+            window.top.location.href =
+              window.scriptUrl + "?page=login&message=logout";
+          })
+          .logUserLogout(currentUser.userId);
       }
-    });
-  }
-
-  function onLogoutSuccess() {
-    // Optional: Clear session/local storage
-    sessionStorage.clear();
-    localStorage.clear();
-
-    // Redirect to login page
-    // window.location.href = "https://script.google.com/macros/s/AKfycbwElllNgvzOXFXNvqN67MATsZIuB28k_HM_mw4_UUAu-DCPDiJV0BzD5H8zc-wGp4Ax/exec";
-    window.top.location.href = window.scriptUrl + "?page=login&message=logout";
-  }
-
-  /**
-   * Handle logout error
-   */
-  function onLogoutError(error) {
-    console.error("Logout error:", error);
-
-    Swal.fire({
-      icon: "error",
-      title: "Logout Error",
-      text: "An error occurred during logout. Please try again.",
-      confirmButtonColor: "#4863A0",
     });
   }
 

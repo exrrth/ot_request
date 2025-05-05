@@ -18,7 +18,9 @@ function initSpreadsheet() {
     ss_userDatabase = SpreadsheetApp.openById(secret.sheetUserDatabaseId);
     ss_otData = SpreadsheetApp.openById(secret.sheetRequestId);
     // Get all required sheets
-    userDatabaseSheet = ss_userDatabase.getSheetByName(secret.sheetUserDataName);
+    userDatabaseSheet = ss_userDatabase.getSheetByName(
+      secret.sheetUserDataName
+    );
     otCatalogSheet = ss_otData.getSheetByName(secret.sheetOtCatalogName);
     loginLogSheet = ss_otData.getSheetByName(secret.sheetLoginLogName);
     otRequestsSheet = ss_otData.getSheetByName(secret.sheetOtRequestsName);
@@ -237,8 +239,29 @@ function authenticateUser(username, password) {
  */
 function logUserLogin(userId, username, fullName) {
   try {
+    console.log("Attempting to log login for user:", username);
+
+    // Call initSpreadsheet explicitly
+    initSpreadsheet();
+
+    // Check if loginLogSheet is properly initialized
+    if (!loginLogSheet) {
+      console.error("Login log sheet not initialized properly");
+      // Try to get the sheet directly
+      const ss_otData = SpreadsheetApp.openById(secret.sheetRequestId);
+      loginLogSheet = ss_otData.getSheetByName(secret.sheetLoginLogName);
+
+      if (!loginLogSheet) {
+        console.error(
+          "Failed to find sheet named: " + secret.sheetLoginLogName
+        );
+        return null;
+      }
+    }
+
     // Get the next available row in Login_Log
     const nextRow = loginLogSheet.getLastRow() + 1;
+    console.log("Next row for new login record:", nextRow);
 
     // Create a new log ID
     const logId = "LOG-" + new Date().getTime();
@@ -247,7 +270,7 @@ function logUserLogin(userId, username, fullName) {
     const timestamp = new Date();
 
     // Add the login record
-    loginLogSheet.getRange(nextRow, 1, 1, 6).setValues([
+    loginLogSheet.getRange(nextRow, 1, 1, 7).setValues([
       [
         logId,
         userId,
@@ -259,10 +282,10 @@ function logUserLogin(userId, username, fullName) {
       ],
     ]);
 
-    console.log("Login logged for user:", username);
+    console.log("Login logged successfully for user:", username);
     return logId;
   } catch (error) {
-    console.error("Error logging login:", error);
+    console.error("Error logging login:", error.message, error.stack);
     return null;
   }
 }
@@ -270,28 +293,67 @@ function logUserLogin(userId, username, fullName) {
 /**
  * Log user logout in the Login_Log sheet
  */
-function logUserLogout(username) {
+function logUserLogout(userId) {
   try {
+    console.log("Attempting to log logout for userId:", userId);
+
+    // Call initSpreadsheet explicitly
     initSpreadsheet();
+
+    // Get user data based on userId
+    const userData = getUserData(userId);
+    const username = userData ? userData.username : "";
+    const fullName = userData ? userData.fullName : "";
+
+    console.log(
+      "Retrieved user data:",
+      userData ? "success" : "failed",
+      "Username:",
+      username,
+      "FullName:",
+      fullName
+    );
+
+    // Check if loginLogSheet is properly initialized
+    if (!loginLogSheet) {
+      console.error("Login log sheet not initialized properly");
+      // Try to get the sheet directly
+      const ss_otData = SpreadsheetApp.openById(secret.sheetRequestId);
+      loginLogSheet = ss_otData.getSheetByName(secret.sheetLoginLogName);
+
+      if (!loginLogSheet) {
+        console.error(
+          "Failed to find sheet named: " + secret.sheetLoginLogName
+        );
+        return false;
+      }
+    }
+
     // Find the most recent login record for this user
     const loginData = loginLogSheet.getDataRange().getValues();
     const headers = loginData[0];
 
     // Find columns
     const usernameCol = headers.indexOf("Username");
+    const userIdCol = headers.indexOf("User_ID");
     const statusCol = headers.indexOf("Status");
     const logoutTimestampCol = headers.indexOf("Logout_Timestamp");
 
-    if (usernameCol === -1 || statusCol === -1 || logoutTimestampCol === -1) {
+    if (
+      usernameCol === -1 ||
+      statusCol === -1 ||
+      logoutTimestampCol === -1 ||
+      userIdCol === -1
+    ) {
       console.error("Required columns not found in Login_Log");
       return false;
     }
 
-    // Find the most recent login record for this user
+    // Find the most recent login record for this user - try using userId
     let rowToUpdate = -1;
     for (let i = loginData.length - 1; i > 0; i--) {
       if (
-        loginData[i][usernameCol] === username &&
+        loginData[i][userIdCol] === userId &&
         loginData[i][statusCol] === "Login" &&
         !loginData[i][logoutTimestampCol]
       ) {
@@ -301,8 +363,26 @@ function logUserLogout(username) {
     }
 
     if (rowToUpdate === -1) {
-      console.warn("No active login session found for user:", username);
-      return false;
+      console.warn("No active login session found for userId:", userId);
+      // Create a logout record as fallback
+      const nextRow = loginLogSheet.getLastRow() + 1;
+      const logId = "LOGOUT-" + new Date().getTime();
+      const timestamp = new Date();
+
+      loginLogSheet.getRange(nextRow, 1, 1, 7).setValues([
+        [
+          logId,
+          userId,
+          username, // Using retrieved username
+          fullName, // Using retrieved full name
+          "", // No login timestamp
+          timestamp, // Logout timestamp
+          "Forced Logout", // Special status
+        ],
+      ]);
+
+      console.log("Created forced logout record as no active login found");
+      return true;
     }
 
     // Update the logout timestamp
@@ -312,10 +392,10 @@ function logUserLogout(username) {
       .setValue(timestamp);
     loginLogSheet.getRange(rowToUpdate, statusCol + 1).setValue("Logout");
 
-    console.log("Logout logged for user:", username);
+    console.log("Logout logged successfully for userId:", userId);
     return true;
   } catch (error) {
-    console.error("Error logging logout:", error);
+    console.error("Error logging logout:", error.message, error.stack);
     return false;
   }
 }
@@ -987,6 +1067,8 @@ function editOTRequest(requestId, editData, editorName) {
 }
 
 function test() {
-  getSupervisorRequests("U003");
-  getTeamMembers("U003");
+  // getSupervisorRequests("U003");
+  // getTeamMembers("U003");
+  // logUserLogin("U003","testusername","ahhaha");
+  logUserLogout("U003", "testusername", "ahhaha");
 }
